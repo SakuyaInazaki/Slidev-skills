@@ -4,6 +4,8 @@
 
 ### Convert Markdown to Slidev Presentations with AI
 
+### 将 Markdown 转换为 Slidev 演示文稿
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Slidev](https://img.shields.io/badge/Slidev-v52.11+-blue.svg)](https://sli.dev)
 
@@ -11,48 +13,55 @@
 
 ---
 
-## 📖 About
+## 📖 About | 关于
 
-**Slidev Converter** is a Claude Skill that transforms standard Markdown documents into beautiful [Slidev](https://sli.dev) presentations. It automatically handles slide separation, layout selection, and syntax conversion.
+**Slidev Converter** is a Claude Skill that transforms standard Markdown documents into beautiful [Slidev](https://sli.dev) presentations.
 
-### ✨ Features
+**Slidev Converter** 是一个 Claude 技能，可将标准 Markdown 文档转换为精美的 [Slidev](https://sli.dev) 演示文稿。
 
-| Feature | Description |
-|---------|-------------|
-| 🔄 **Auto Conversion** | Transform Markdown to Slidev format instantly |
-| 📐 **Smart Layouts** | Automatically selects appropriate layouts |
-| 🎨 **Syntax Support** | Full Slidev syntax including animations & styling |
-| 📚 **Reference Guide** | Built-in complete syntax reference |
-| 📄 **Template Included** | Ready-to-use presentation template |
+### ✨ Features | 特性
+
+| Feature | 功能 | Description |
+|---------|------|-------------|
+| 🔄 **Auto Conversion** | 自动转换 | Transform Markdown to Slidev format instantly |
+| 📐 **Smart Layouts** | 智能布局 | Automatically selects appropriate layouts |
+| 🎨 **Syntax Support** | 语法支持 | Full Slidev syntax including animations & styling |
+| 📚 **Reference Guide** | 参考指南 | Built-in complete syntax reference |
+| 📄 **Template Included** | 附带模板 | Ready-to-use presentation template |
 
 ---
 
-## 🚀 Quick Start
+## 🚀 Quick Start | 快速开始
 
-### Installation
+### Installation | 安装
 
-1. **Clone or download this skill**
-2. **Import to Claude Code** or **Copy to your skills directory**
+1. **Clone or download this skill** | 克隆或下载此技能
+2. **Import to Claude Code** or **Copy to your skills directory** | 导入 Claude Code 或复制到技能目录
 
-### Usage
+### Usage | 使用
 
 Simply ask Claude to convert your Markdown:
 
+直接让 Claude 转换你的 Markdown：
+
 ```
 "Convert this markdown to Slidev format: [your content]"
+"把这段 markdown 转换为 Slidev 格式：[你的内容]"
 ```
 
 ```
 "Turn my notes into a Slidev presentation"
+"把我的笔记转换成 Slidev 演示文稿"
 ```
 
 ```
 "Create slides from this markdown: [paste content]"
+"用这段 markdown 创建幻灯片：[粘贴内容]"
 ```
 
 ---
 
-## 📋 How It Works
+## 📋 How It Works | 工作原理
 
 ```mermaid
 graph LR
@@ -64,32 +73,32 @@ graph LR
     F --> G[Slidev Output]
 ```
 
-### The Skill Does:
+### What It Does | 功能说明
 
-- ✅ Separate slides with `---` syntax
-- ✅ Add appropriate frontmatter configurations
-- ✅ Choose layouts based on content type
-- ✅ Preserve code blocks with syntax highlighting
-- ✅ Add click animations (`v-click`) where appropriate
-- ✅ Apply CSS classes for styling
-
----
-
-## 🎨 Layout Guide
-
-| Content Type | Recommended Layout |
-|:-------------:|:------------------:|
-| 📄 Title/Cover | `layout: center` |
-| 📝 Text + Code | `layout: two-cols` |
-| 🖼️ Text + Image | `layout: image-right` |
-| 📊 Bullet Points | Default (no layout) |
-| ⚖️ Comparison | `layout: two-cols` |
+- ✅ Separate slides with `---` syntax | 使用 `---` 语法分隔幻灯片
+- ✅ Add appropriate frontmatter configurations | 添加适当的 frontmatter 配置
+- ✅ Choose layouts based on content type | 根据内容类型选择布局
+- ✅ Preserve code blocks with syntax highlighting | 保留带语法高亮的代码块
+- ✅ Add click animations (`v-click`) where appropriate | 添加点击动画
+- ✅ Apply CSS classes for styling | 应用 CSS 类进行样式设置
 
 ---
 
-## 📚 Slidev Syntax Quick Reference
+## 🎨 Layout Guide | 布局指南
 
-### Page Separation
+| Content Type | 内容类型 | Recommended Layout |
+|:-------------:|:---------:|:------------------:|
+| 📄 Title/Cover | 标题/封面 | `layout: center` |
+| 📝 Text + Code | 文字 + 代码 | `layout: two-cols` |
+| 🖼️ Text + Image | 文字 + 图片 | `layout: image-right` |
+| 📊 Bullet Points | 项目列表 | Default (no layout) |
+| ⚖️ Comparison | 对比内容 | `layout: two-cols` |
+
+---
+
+## 📚 Syntax Quick Reference | 语法速查
+
+### Page Separation | 分隔页面
 
 ```markdown
 ---
@@ -105,7 +114,7 @@ Content
 # Next Slide
 ```
 
-### Frontmatter
+### Frontmatter | 页面配置
 
 ```markdown
 ---
@@ -117,7 +126,7 @@ theme: seriph
 # Content
 ```
 
-### Click Animations
+### Click Animations | 点击动画
 
 ```markdown
 <div v-click>Appears on click</div>
@@ -129,28 +138,28 @@ theme: seriph
 </v-clicks>
 ```
 
-### Two Columns
+### Two Columns | 两栏布局
 
 ```markdown
 ---
 layout: two-cols
 ---
 
-## Left Column
+## Left Column | 左栏
 
 - Point A
 - Point B
 
 ::right::
 
-## Right Column
+## Right Column | 右栏
 
 Description or code
 ```
 
 ---
 
-## 📂 Skill Structure
+## 📂 Skill Structure | 技能结构
 
 ```
 slidev-converter/
@@ -164,93 +173,20 @@ slidev-converter/
 
 ---
 
-## 🎯 Example
+## 🔗 Resources | 资源链接
 
-### Input (Standard Markdown)
-
-```markdown
-# My Presentation
-
-## Introduction
-
-Welcome to this presentation about...
-
-## Features
-
-- Feature 1
-- Feature 2
-- Feature 3
-
-## Code Example
-
-function hello() {
-  console.log("Hello World");
-}
-```
-
-### Output (Slidev Format)
-
-```markdown
----
-theme: seriph
-class: text-center
----
-
-# My Presentation
-
-<div class="mt-10">
-  Welcome to this presentation
-</div>
-
----
----
-
-# Introduction
-
-Welcome to this presentation about...
-
----
----
-
-# Features
-
-<v-clicks>
-
-- Feature 1
-- Feature 2
-- Feature 3
-
-</v-clicks>
-
----
-layout: two-cols
----
-
-# Code Example
-
-::right::
-
-```js
-function hello() {
-  console.log("Hello World");
-}
-```
-```
+- [Slidev Official Documentation](https://sli.dev/guide/) | [Slidev 官方文档](https://sli.dev/guide/)
+- [Slidev Syntax Guide](https://sli.dev/guide/syntax.html) | [Slidev 语法指南](https://sli.dev/guide/syntax.html)
+- [Layout Reference](https://sli.dev/guide/layouts.html) | [布局参考](https://sli.dev/guide/layouts.html)
+- [Theme Gallery](https://sli.dev/resources/theme-gallery) | [主题画廊](https://sli.dev/resources/theme-gallery)
 
 ---
 
-## 🔗 Resources
-
-- [Slidev Official Documentation](https://sli.dev/guide/)
-- [Slidev Syntax Guide](https://sli.dev/guide/syntax.html)
-- [Layout Reference](https://sli.dev/guide/layouts.html)
-- [Theme Gallery](https://sli.dev/resources/theme-gallery)
-
----
-
-## 📝 License
+## 📝 License | 许可证
 
 MIT License - feel free to use and modify!
+
+MIT 许可证 - 自由使用和修改！
 
 ---
 
@@ -258,6 +194,8 @@ MIT License - feel free to use and modify!
 
 **Made with ❤️ for the Slidev community**
 
-[⬆ Back to Top](#-slidev-converter)
+**为 Slidev 社区用 ❤️ 制作**
+
+[⬆ Back to Top](#-slidev-converter) [⬆ 返回顶部](#-slidev-converter)
 
 </div>
