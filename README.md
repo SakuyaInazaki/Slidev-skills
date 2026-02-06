@@ -15,17 +15,20 @@
 
 ## 📖 About
 
-**Slidev Converter** is a Claude Skill that transforms standard Markdown documents into beautiful [Slidev](https://sli.dev) presentations. It automatically handles slide separation, layout selection, and syntax conversion.
+**Slidev Converter** is a Claude Skill that transforms standard Markdown documents into beautiful [Slidev](https://sli.dev) presentations. It automatically handles slide separation, layout selection, and syntax conversion with comprehensive support for advanced Slidev features.
 
 ### ✨ Features
 
 | Feature | Description |
 |---------|-------------|
 | 🔄 **Auto Conversion** | Transform Markdown to Slidev format instantly |
-| 📐 **Smart Layouts** | Automatically selects appropriate layouts |
-| 🎨 **Syntax Support** | Full Slidev syntax including animations & styling |
-| 📚 **Reference Guide** | Built-in complete syntax reference |
+| 📐 **Smart Layouts** | Automatically selects appropriate layouts (12+ built-in) |
+| 🎨 **Syntax Support** | Full Slidev syntax including animations, components, and directives |
+| 📚 **Complete Reference** | Built-in comprehensive syntax reference covering all features |
 | 📄 **Template Included** | Ready-to-use presentation template |
+| 🚀 **Advanced Features** | LaTeX math, Mermaid diagrams, Vue components, export options |
+| 🎭 **Animations** | v-click, v-after, v-motion, v-mark directives |
+| 🎨 **UnoCSS Support** | Complete utility class reference for styling |
 
 ---
 
@@ -54,26 +57,37 @@ Simply ask Claude to convert your Markdown:
 
 ---
 
-## 📋 How It Works
+## 📋 Supported Features
 
-```mermaid
-graph LR
-    A[Markdown Input] --> B[Analyze Structure]
-    B --> C[Determine Slide Breaks]
-    C --> D[Apply Layouts]
-    D --> E[Add Frontmatter]
-    E --> F[Enhance with Slidev Features]
-    F --> G[Slidev Output]
-```
+### Core Features
+- ✅ Slide separation with `---` syntax
+- ✅ Frontmatter configurations (global and per-slide)
+- ✅ 12+ built-in layouts (center, two-cols, image-left/right, iframe, etc.)
+- ✅ Code blocks with syntax highlighting and line highlighting
+- ✅ UnoCSS utility classes for styling
 
-### What It Does
+### Animations
+- ✅ `v-click` - Click-based animations
+- ✅ `v-after` - Sequential animations
+- ✅ `v-clicks` - List animations
+- ✅ `v-mark` - Text marking (underline, circle)
+- ✅ `v-motion` - Motion animations with presets
+- ✅ Slide transitions (slide-left, fade, etc.)
 
-- ✅ Separate slides with `---` syntax
-- ✅ Add appropriate frontmatter configurations
-- ✅ Choose layouts based on content type
-- ✅ Preserve code blocks with syntax highlighting
-- ✅ Add click animations (`v-click`) where appropriate
-- ✅ Apply CSS classes for styling
+### Components
+- ✅ Toc (Table of Contents)
+- ✅ Link with preview cards
+- ✅ YouTube embeds
+- ✅ Tweet embeds
+- ✅ Custom Vue components
+
+### Advanced
+- ✅ LaTeX math (inline and block)
+- ✅ Mermaid diagrams (flowchart, sequence, class, state, ER, journey)
+- ✅ Speaker notes
+- ✅ Export options (PDF, PPTX, PNG)
+- ✅ Global context ($slidev)
+- ✅ Monaco editor integration
 
 ---
 
@@ -81,11 +95,13 @@ graph LR
 
 | Content Type | Recommended Layout |
 |:-------------:|:------------------:|
-| 📄 Title/Cover | `layout: center` |
+| 📄 Title/Cover | `layout: cover` or `layout: center` |
 | 📝 Text + Code | `layout: two-cols` |
-| 🖼️ Text + Image | `layout: image-right` |
+| 🖼️ Text + Image | `layout: image-right` or `layout: image-left` |
 | 📊 Bullet Points | Default (no layout) |
-| ⚖️ Comparison | `layout: two-cols` |
+| ⚖️ Comparison | `layout: two-cols` with `::right::` |
+| 🌐 Website Demo | `layout: iframe` |
+| 💬 Quote | `layout: quote` |
 
 ---
 
@@ -114,6 +130,7 @@ Content
 layout: two-cols
 class: text-center
 theme: seriph
+transition: slide-left
 ---
 
 # Content
@@ -150,6 +167,17 @@ layout: two-cols
 Description or code
 ```
 
+### LaTeX Math
+
+```markdown
+Inline: $E = mc^2$
+
+Block:
+$$
+\int_{0}^{\infty} e^{-x^2} dx = \frac{\sqrt{\pi}}{2}
+$$
+```
+
 ---
 
 ## 📂 Skill Structure
@@ -157,9 +185,10 @@ Description or code
 ```
 slidev-converter/
 ├── SKILL.md                    # Core instructions for Claude
-├── README.md                   # This file
+├── README.md                   # This file (English)
+├── README_zh.md                # Chinese version
 ├── references/
-│   └── slidev-syntax.md       # Complete syntax reference
+│   └── slidev-syntax.md       # Complete syntax reference (600+ lines)
 └── assets/
     └── template.md            # Starter template
 ```
@@ -172,6 +201,7 @@ slidev-converter/
 - [Slidev Syntax Guide](https://sli.dev/guide/syntax.html)
 - [Layout Reference](https://sli.dev/guide/layouts.html)
 - [Theme Gallery](https://sli.dev/resources/theme-gallery)
+- [Built-in Components](https://sli.dev/guide/built-ins.html)
 
 ---
 
