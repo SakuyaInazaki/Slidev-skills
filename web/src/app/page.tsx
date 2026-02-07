@@ -15,7 +15,7 @@ import {
   Sun,
   Github,
   ExternalLink,
-  Slideshow,
+  Presentation,
   Wand2,
 } from "lucide-react"
 import { convertToSlidev, downloadSlides, THEMES, TRANSITIONS, type ConversionOptions } from "@/lib/converter"
@@ -149,7 +149,7 @@ export default function Home() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="bg-primary/10 p-2 rounded-lg">
-                <Slideshow className="h-6 w-6 text-primary" />
+                <Presentation className="h-6 w-6 text-primary" />
               </div>
               <div>
                 <h1 className="text-xl font-bold">Slidev Converter</h1>
