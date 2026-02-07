@@ -26,38 +26,101 @@ export function SlidePreview({ content, theme = "seriph", onAddImage, onUploadIm
   const slides = useMemo(() => {
     if (!content) return []
 
-    // Split by --- which separates slides
-    const rawSlides = content.split(/^\n---\n$/m)
+    // Parse slides from Slidev format
+    // Slidev uses --- to separate slides, with optional frontmatter
+    const parsedSlides: ParsedSlide[] = []
 
-    return rawSlides.map((raw) => {
-      // Check for frontmatter
-      const frontmatterMatch = raw.match(/^---\n([\s\S]+?)\n---/)
+    // Split by --- but we need to be careful about the frontmatter blocks
+    // The format is:
+    // ---
+    // frontmatter
+    // ---
+    // content
+    // ---
+    // frontmatter (optional)
+    // ---
+    // content
+    // ...
 
-      let frontmatter: Record<string, any> = {}
-      let slideContent = raw
+    // Strategy: Find all slide boundaries and extract content
+    const lines = content.split("\n")
+    let currentSlide: ParsedSlide = {
+      frontmatter: {},
+      content: "",
+      raw: "",
+    }
+    let inFrontmatter = false
+    let frontmatterLines: string[] = []
+    let contentLines: string[] = []
+    let isFirstSlide = true
+    let slideCount = 0
 
-      if (frontmatterMatch) {
-        try {
-          // Parse YAML frontmatter (basic parsing)
-          frontmatterMatch[1].split("\n").forEach((line) => {
-            const [key, ...valueParts] = line.split(":")
-            if (key && valueParts.length > 0) {
-              const value = valueParts.join(":").trim()
-              frontmatter[key.trim()] = value
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i]
+
+      if (line === "---") {
+        if (inFrontmatter) {
+          // End of frontmatter block
+          inFrontmatter = false
+
+          // Parse frontmatter
+          currentSlide.frontmatter = {}
+          frontmatterLines.forEach((fmLine) => {
+            const colonIndex = fmLine.indexOf(":")
+            if (colonIndex > 0) {
+              const key = fmLine.slice(0, colonIndex).trim()
+              const value = fmLine.slice(colonIndex + 1).trim()
+              currentSlide.frontmatter[key] = value
             }
           })
-        } catch (e) {
-          // Ignore parse errors
-        }
-        slideContent = raw.replace(/^---\n[\s\S]+?\n---\n?/, "")
-      }
+          frontmatterLines = []
+        } else if (contentLines.length > 0 || Object.keys(currentSlide.frontmatter).length > 0) {
+          // End of a slide (encountering --- after content)
+          // Save previous slide first
+          if (!isFirstSlide) {
+            currentSlide.content = contentLines.join("\n").trim()
+            currentSlide.raw = contentLines.join("\n")
+            if (currentSlide.content || Object.keys(currentSlide.frontmatter).length > 0) {
+              parsedSlides.push({ ...currentSlide })
+            }
+          }
 
-      return {
-        frontmatter,
-        content: slideContent.trim(),
-        raw,
+          // Start new slide
+          currentSlide = {
+            frontmatter: {},
+            content: "",
+            raw: "",
+          }
+          contentLines = []
+          isFirstSlide = false
+          slideCount++
+
+          // Check if next line starts another frontmatter
+          if (i + 1 < lines.length && lines[i + 1].trim() !== "") {
+            inFrontmatter = true
+          }
+        } else {
+          // Start of frontmatter
+          inFrontmatter = true
+        }
+      } else if (inFrontmatter) {
+        frontmatterLines.push(line)
+      } else {
+        // Skip the global frontmatter (first block with theme, etc.)
+        if (!isFirstSlide || slideCount > 0) {
+          contentLines.push(line)
+        }
       }
-    }).filter(slide => slide.content || Object.keys(slide.frontmatter).length > 0)
+    }
+
+    // Don't forget the last slide
+    if (!isFirstSlide && contentLines.length > 0) {
+      currentSlide.content = contentLines.join("\n").trim()
+      currentSlide.raw = contentLines.join("\n")
+      parsedSlides.push(currentSlide)
+    }
+
+    return parsedSlides
   }, [content])
 
   const currentSlideData = slides[currentSlide]
