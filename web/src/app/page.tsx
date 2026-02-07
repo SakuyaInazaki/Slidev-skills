@@ -312,14 +312,14 @@ export default function Home() {
               Preview & Export
             </CardTitle>
             <CardDescription>
-              Copy the output above and paste it into a Slidev project to preview, or use the official{" "}
+              Copy the output to create a Slidev project, or try{" "}
               <a
-                href="https://sli.dev/play"
+                href="https://stackblitz.com/github/slidevjs/slidev-starter"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-primary hover:underline flex items-center gap-1 inline-flex"
               >
-                Slidev Playground
+                Slidev on StackBlitz
                 <ExternalLink className="h-3 w-3" />
               </a>
             </CardDescription>
@@ -328,12 +328,12 @@ export default function Home() {
             <div className="flex flex-wrap gap-4">
               <Button asChild>
                 <a
-                  href="https://sli.dev/play"
+                  href="https://stackblitz.com/github/slidevjs/slidev-starter"
                   target="_blank"
                   rel="noopener noreferrer"
                 >
                   <Eye className="h-4 w-4 mr-2" />
-                  Open Playground
+                  Try on StackBlitz
                 </a>
               </Button>
               <Button variant="outline" asChild>
@@ -344,6 +344,16 @@ export default function Home() {
                 >
                   <FileText className="h-4 w-4 mr-2" />
                   View Docs
+                </a>
+              </Button>
+              <Button variant="outline" asChild>
+                <a
+                  href="https://sli.dev/install.html"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Install Slidev
                 </a>
               </Button>
             </div>
