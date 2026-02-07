@@ -15,7 +15,13 @@
 
 ## 📖 About
 
-**Slidev Converter** is a Claude Skill that transforms standard Markdown documents into beautiful [Slidev](https://sli.dev) presentations. It automatically handles slide separation, layout selection, and syntax conversion with comprehensive support for advanced Slidev features.
+**Slidev Converter** transforms standard Markdown documents into beautiful [Slidev](https://sli.dev) presentations. It automatically handles slide separation, layout selection, and syntax conversion with comprehensive support for advanced Slidev features.
+
+### 🌐 Web App
+
+Try the **[Slidev Converter Web App](https://slidev-converter.vercel.app/)** - No installation required!
+
+> Paste your Markdown, customize themes, and export to PDF directly in your browser.
 
 ### ✨ Features
 
@@ -180,18 +186,46 @@ $$
 
 ---
 
-## 📂 Skill Structure
+## 📂 Project Structure
 
 ```
 slidev-converter/
 ├── SKILL.md                    # Core instructions for Claude
 ├── README.md                   # This file (English)
 ├── README_zh.md                # Chinese version
+├── web/                        # Web application
+│   ├── src/
+│   │   ├── app/               # Next.js app directory
+│   │   ├── components/        # React components
+│   │   └── lib/               # Utility functions & converter logic
+│   └── package.json           # Web app dependencies
 ├── references/
 │   └── slidev-syntax.md       # Complete syntax reference (600+ lines)
 └── assets/
     └── template.md            # Starter template
 ```
+
+## 🌐 Web App
+
+Try the **[Slidev Converter Web App](https://slidev-converter.vercel.app/)**!
+
+### Features
+- 📝 **Live Editor** - Monaco editor with Markdown syntax highlighting
+- 🔄 **Real-time Conversion** - See changes instantly as you type
+- 🎨 **Theme Selection** - Choose from multiple Slidev themes
+- 📥 **One-click Export** - Download converted Markdown or copy to clipboard
+- 🌙 **Dark Mode** - Toggle between light and dark themes
+- 📊 **Statistics** - See slide count and content features at a glance
+
+### Running Locally
+
+```bash
+cd web
+npm install
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ---
 

@@ -1,0 +1,25 @@
+# Claude Code
+.claude/
+
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+*.skill
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Web app
+web/.next/
+web/out/
+web/.vercel/
+web/node_modules/
