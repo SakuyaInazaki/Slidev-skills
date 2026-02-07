@@ -53,3 +53,106 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Slide Preview Styles */
+.slide-preview {
+  @apply overflow-hidden;
+}
+
+.slide-preview-cover {
+  @apply text-center;
+}
+
+.slide-preview-cover h1 {
+  @apply text-5xl font-bold mb-4;
+}
+
+.slide-preview-center {
+  @apply flex items-center justify-center text-center;
+}
+
+.slide-preview-two-cols {
+  @apply grid grid-cols-2 gap-4;
+}
+
+.slide-preview-image-right {
+  @apply grid grid-cols-2 gap-6;
+}
+
+.slide-preview-quote {
+  @apply flex items-center justify-center;
+}
+
+.slide-preview-quote blockquote {
+  @apply text-3xl italic border-l-4 border-primary pl-6;
+}
+
+/* Delay for chat animation bubbles */
+.delay-100 {
+  animation-delay: 0.1s;
+}
+
+.delay-200 {
+  animation-delay: 0.2s;
+}
+
+/* Markdown prose styles for preview */
+.prose {
+  @apply max-w-none text-foreground;
+}
+
+.prose h1 {
+  @apply text-3xl font-bold mb-4 mt-0;
+}
+
+.prose h2 {
+  @apply text-2xl font-bold mb-3 mt-6;
+}
+
+.prose h3 {
+  @apply text-xl font-bold mb-2 mt-4;
+}
+
+.prose p {
+  @apply mb-4 leading-relaxed;
+}
+
+.prose ul {
+  @apply list-disc list-inside mb-4 space-y-1;
+}
+
+.prose ol {
+  @apply list-decimal list-inside mb-4 space-y-1;
+}
+
+.prose li {
+  @apply ml-4;
+}
+
+.prose code {
+  @apply bg-muted px-1.5 py-0.5 rounded text-sm font-mono;
+}
+
+.prose pre {
+  @apply bg-muted p-4 rounded-lg overflow-x-auto mb-4;
+}
+
+.prose pre code {
+  @apply bg-transparent p-0;
+}
+
+.prose blockquote {
+  @apply border-l-4 border-primary pl-4 italic;
+}
+
+.prose a {
+  @apply text-primary hover:underline;
+}
+
+.prose img {
+  @apply rounded-lg max-w-full h-auto;
+}
+
+.prose strong {
+  @apply font-semibold;
+}

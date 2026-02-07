@@ -1,8 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
-import { Textarea } from "@/components/ui/textarea"
 import { Select } from "@/components/ui/select"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
@@ -17,8 +16,13 @@ import {
   ExternalLink,
   Presentation,
   Wand2,
+  PanelLeft,
+  PanelRight,
 } from "lucide-react"
 import { convertToSlidev, downloadSlides, THEMES, TRANSITIONS, type ConversionOptions } from "@/lib/converter"
+import { ChatPanel, type Message } from "@/components/chat-panel"
+import { ApiSettings } from "@/components/api-settings"
+import { SlidePreview } from "@/components/slide-preview"
 
 // Monaco editor is loaded dynamically
 const MonacoEditor = dynamic(() => import("@/components/monaco-editor"), {
@@ -64,25 +68,6 @@ function greet(name: string) {
 greet("Slidev")
 \`\`\`
 
-## Math Formula
-
-The famous equation:
-
-$$
-E = mc^2
-$$
-
-## Diagram
-
-\`\`\`mermaid
-graph TD
-  A[Start] --> B{Decision}
-  B -->|Yes| C[Action 1]
-  B -->|No| D[Action 2]
-  C --> E[End]
-  D --> E
-\`\`\`
-
 ## Thank You
 
 Questions?
@@ -100,6 +85,29 @@ export default function Home() {
   const [title, setTitle] = useState("My Presentation")
   const [darkMode, setDarkMode] = useState(false)
   const [stats, setStats] = useState({ totalSlides: 0, hasCode: false, hasImages: false, hasDiagrams: false })
+
+  // AI Features
+  const [messages, setMessages] = useState<Message[]>([{
+    id: "welcome",
+    role: "assistant",
+    content: "Hi! I'm your Slidev assistant. I can help you:\n\n• Optimize slide layouts\n• Generate images for your slides\n• Improve content and design\n\nJust ask me anything!",
+    timestamp: new Date(),
+  }])
+  const [isProcessing, setIsProcessing] = useState(false)
+  const [claudeApiKey, setClaudeApiKey] = useState("")
+  const [replicateApiKey, setReplicateApiKey] = useState("")
+
+  // View state
+  const [showPreview, setShowPreview] = useState(true)
+  const [activePanel, setActivePanel] = useState<"editor" | "preview">("editor")
+
+  // Load API keys from localStorage on mount
+  useEffect(() => {
+    const savedClaude = localStorage.getItem("claude-api-key")
+    const savedReplicate = localStorage.getItem("replicate-api-key")
+    if (savedClaude) setClaudeApiKey(savedClaude)
+    if (savedReplicate) setReplicateApiKey(savedReplicate)
+  }, [])
 
   // Convert markdown to slidev
   const convert = () => {
@@ -138,7 +146,117 @@ export default function Home() {
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(output)
-    // Could add a toast notification here
+  }
+
+  // Handle AI chat messages
+  const handleSendMessage = useCallback(async (userMessage: string) => {
+    if (!claudeApiKey) {
+      setMessages(prev => [...prev, {
+        id: Date.now().toString(),
+        role: "assistant",
+        content: "Please add your Claude API key in the API Settings first. You can get one at https://console.anthropic.com/",
+        timestamp: new Date(),
+      }])
+      return
+    }
+
+    // Add user message
+    const newUserMessage: Message = {
+      id: Date.now().toString(),
+      role: "user",
+      content: userMessage,
+      timestamp: new Date(),
+    }
+    setMessages(prev => [...prev, newUserMessage])
+    setIsProcessing(true)
+
+    try {
+      // Build message history for Claude
+      const claudeMessages = [
+        ...messages.slice(-10).map(m => ({
+          role: m.role as "user" | "assistant",
+          content: m.content,
+        })),
+        {
+          role: "user" as const,
+          content: userMessage,
+        },
+      ]
+
+      const response = await fetch("/api/claude", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: claudeMessages,
+          apiKey: claudeApiKey,
+          slidevContent: output,
+          originalMarkdown: input,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to get response from Claude")
+      }
+
+      const data = await response.json()
+
+      // Add assistant response
+      const assistantMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: data.response,
+        timestamp: new Date(),
+      }
+      setMessages(prev => [...prev, assistantMessage])
+
+    } catch (error) {
+      setMessages(prev => [...prev, {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: "Sorry, I encountered an error. Please check your API key and try again.",
+        timestamp: new Date(),
+      }])
+    } finally {
+      setIsProcessing(false)
+    }
+  }, [claudeApiKey, messages, output, input])
+
+  // Handle adding image to slide
+  const handleAddImage = async (slideIndex: number) => {
+    if (!replicateApiKey) {
+      setMessages(prev => [...prev, {
+        id: Date.now().toString(),
+        role: "assistant",
+        content: "Please add your Replicate API key in the API Settings first. You can get one at https://replicate.com/account/api-tokens",
+        timestamp: new Date(),
+      }])
+      return
+    }
+
+    // Ask user what image they want
+    setMessages(prev => [...prev, {
+      id: Date.now().toString(),
+      role: "assistant",
+      content: `What kind of image would you like to generate for slide ${slideIndex + 1}? Please describe the image you want.`,
+      timestamp: new Date(),
+    }])
+  }
+
+  // Handle upload image
+  const handleUploadImage = async (slideIndex: number, file: File) => {
+    // Convert to base64 and insert into the slide
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const base64 = e.target?.result as string
+
+      // Insert image into the slide at slideIndex
+      const slides = output.split(/^\n---\n$/m)
+      if (slides[slideIndex]) {
+        slides[slideIndex] += `\n\n![Uploaded image](${base64})`
+        setOutput(slides.join("\n---\n"))
+      }
+    }
+    reader.readAsDataURL(file)
   }
 
   return (
@@ -157,6 +275,10 @@ export default function Home() {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <ApiSettings
+                onClaudeKeyChange={setClaudeApiKey}
+                onReplicateKeyChange={setReplicateApiKey}
+              />
               <Button
                 variant="ghost"
                 size="icon"
@@ -241,14 +363,24 @@ export default function Home() {
                   {stats.hasDiagrams && <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900 rounded text-xs">Diagrams</span>}
                 </div>
               </div>
+              <div className="flex items-center gap-2 border-l pl-4">
+                <Button
+                  variant={showPreview ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setShowPreview(!showPreview)}
+                >
+                  <Eye className="h-4 w-4 mr-2" />
+                  Preview
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Editor & Output */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Editor, Output, Preview */}
+        <div className={`grid gap-6 ${showPreview ? "grid-cols-1 lg:grid-cols-3" : "grid-cols-1 lg:grid-cols-2"}`}>
           {/* Input Panel */}
-          <Card className="h-[calc(100vh-280px)] flex flex-col">
+          <Card className={`${showPreview ? "h-[calc(100vh-280px)]" : "h-[calc(100vh-280px)]"} flex flex-col`}>
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -273,7 +405,7 @@ export default function Home() {
           </Card>
 
           {/* Output Panel */}
-          <Card className="h-[calc(100vh-280px)] flex flex-col">
+          <Card className={`${showPreview ? "h-[calc(100vh-280px)]" : "h-[calc(100vh-280px)]"} flex flex-col`}>
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -295,38 +427,41 @@ export default function Home() {
             <CardContent className="flex-1 p-0">
               <MonacoEditor
                 value={output}
-                onChange={() => {}}
+                onChange={(value) => setOutput(value || "")}
                 language="markdown"
-                readOnly
+                readOnly={false}
                 className="h-full"
               />
             </CardContent>
           </Card>
+
+          {/* Preview Panel */}
+          {showPreview && (
+            <div className="h-[calc(100vh-280px)]">
+              <SlidePreview
+                content={output}
+                theme={theme}
+                onAddImage={handleAddImage}
+                onUploadImage={handleUploadImage}
+              />
+            </div>
+          )}
         </div>
 
         {/* Quick Actions */}
         <Card className="mt-6">
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
-              <Eye className="h-5 w-5" />
-              Preview & Export
+              <ExternalLink className="h-5 w-5" />
+              Resources
             </CardTitle>
             <CardDescription>
-              Copy the output to create a Slidev project, or try{" "}
-              <a
-                href="https://stackblitz.com/github/slidevjs/slidev-starter"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary hover:underline flex items-center gap-1 inline-flex"
-              >
-                Slidev on StackBlitz
-                <ExternalLink className="h-3 w-3" />
-              </a>
+              Learn more about Slidev and start creating presentations
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex flex-wrap gap-4">
-              <Button asChild>
+              <Button variant="outline" asChild>
                 <a
                   href="https://stackblitz.com/github/slidevjs/slidev-starter"
                   target="_blank"
@@ -360,6 +495,14 @@ export default function Home() {
           </CardContent>
         </Card>
       </main>
+
+      {/* Chat Panel */}
+      <ChatPanel
+        messages={messages}
+        onSendMessage={handleSendMessage}
+        isProcessing={isProcessing}
+        placeholder="Ask AI to optimize your slides..."
+      />
 
       {/* Footer */}
       <footer className="border-t mt-12 py-6">
