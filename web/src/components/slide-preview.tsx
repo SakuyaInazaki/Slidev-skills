@@ -26,98 +26,95 @@ export function SlidePreview({ content, theme = "seriph", onAddImage, onUploadIm
   const slides = useMemo(() => {
     if (!content) return []
 
-    // Parse slides from Slidev format
-    // Slidev uses --- to separate slides, with optional frontmatter
-    const parsedSlides: ParsedSlide[] = []
-
-    // Split by --- but we need to be careful about the frontmatter blocks
-    // The format is:
-    // ---
-    // frontmatter
-    // ---
-    // content
-    // ---
+    // More robust parsing for Slidev format
+    // Slidev format:
+    // --- (start)
     // frontmatter (optional)
     // ---
     // content
-    // ...
+    // ---
+    // ... (repeats)
 
-    // Strategy: Find all slide boundaries and extract content
-    const lines = content.split("\n")
-    let currentSlide: ParsedSlide = {
-      frontmatter: {},
-      content: "",
-      raw: "",
+    const parsedSlides: ParsedSlide[] = []
+    const parts = content.split(/^---$/m)
+
+    // parts[0] is usually empty or has content before first ---
+    // parts[1] is global frontmatter, parts[2] is first slide content, etc.
+    // The pattern is: [empty], [global fm], [slide 1 fm?], [slide 1 content], [slide 2 fm?], [slide 2 content], ...
+
+    let i = 0
+    if (parts.length > 0 && parts[0].trim() === "") {
+      i = 1 // Skip initial empty part
     }
-    let inFrontmatter = false
-    let frontmatterLines: string[] = []
-    let contentLines: string[] = []
-    let isFirstSlide = true
-    let slideCount = 0
 
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i]
+    // Skip global frontmatter
+    if (i < parts.length && parts[i].includes("theme:")) {
+      i += 2 // Skip frontmatter and its closing ---
+    }
 
-      if (line === "---") {
-        if (inFrontmatter) {
-          // End of frontmatter block
-          inFrontmatter = false
+    // Now parse slides
+    while (i < parts.length) {
+      const part = parts[i].trim()
 
-          // Parse frontmatter
-          currentSlide.frontmatter = {}
-          frontmatterLines.forEach((fmLine) => {
-            const colonIndex = fmLine.indexOf(":")
-            if (colonIndex > 0) {
-              const key = fmLine.slice(0, colonIndex).trim()
-              const value = fmLine.slice(colonIndex + 1).trim()
-              currentSlide.frontmatter[key] = value
-            }
-          })
-          frontmatterLines = []
-        } else if (contentLines.length > 0 || Object.keys(currentSlide.frontmatter).length > 0) {
-          // End of a slide (encountering --- after content)
-          // Save previous slide first
-          if (!isFirstSlide) {
-            currentSlide.content = contentLines.join("\n").trim()
-            currentSlide.raw = contentLines.join("\n")
-            if (currentSlide.content || Object.keys(currentSlide.frontmatter).length > 0) {
-              parsedSlides.push({ ...currentSlide })
-            }
-          }
-
-          // Start new slide
-          currentSlide = {
-            frontmatter: {},
-            content: "",
-            raw: "",
-          }
-          contentLines = []
-          isFirstSlide = false
-          slideCount++
-
-          // Check if next line starts another frontmatter
-          if (i + 1 < lines.length && lines[i + 1].trim() !== "") {
-            inFrontmatter = true
-          }
-        } else {
-          // Start of frontmatter
-          inFrontmatter = true
-        }
-      } else if (inFrontmatter) {
-        frontmatterLines.push(line)
-      } else {
-        // Skip the global frontmatter (first block with theme, etc.)
-        if (!isFirstSlide || slideCount > 0) {
-          contentLines.push(line)
-        }
+      if (!part) {
+        i++
+        continue
       }
+
+      let slide: ParsedSlide = {
+        frontmatter: {},
+        content: "",
+        raw: "",
+      }
+
+      // Check if this part looks like frontmatter (contains key: value pairs)
+      const isFrontmatter = /^[\w-]+:\s*\S+/m.test(part)
+
+      if (isFrontmatter) {
+        // Parse frontmatter
+        part.split("\n").forEach((line) => {
+          const colonIndex = line.indexOf(":")
+          if (colonIndex > 0) {
+            const key = line.slice(0, colonIndex).trim()
+            const value = line.slice(colonIndex + 1).trim()
+            slide.frontmatter[key] = value
+          }
+        })
+        i++
+
+        // Next part is the content
+        if (i < parts.length) {
+          slide.content = parts[i].trim()
+          slide.raw = parts[i]
+        }
+      } else {
+        // This is just content, no frontmatter
+        slide.content = part
+        slide.raw = part
+      }
+
+      // Only add if has content or meaningful frontmatter
+      if (slide.content || Object.keys(slide.frontmatter).length > 0) {
+        parsedSlides.push(slide)
+      }
+
+      i++
     }
 
-    // Don't forget the last slide
-    if (!isFirstSlide && contentLines.length > 0) {
-      currentSlide.content = contentLines.join("\n").trim()
-      currentSlide.raw = contentLines.join("\n")
-      parsedSlides.push(currentSlide)
+    // If parsing failed completely, try a simpler fallback
+    if (parsedSlides.length === 0 && content.trim()) {
+      // Fallback: split by ---\n---\n pattern
+      const fallbackSlides = content.split(/---\n---\n/)
+      fallbackSlides.forEach((slideContent, idx) => {
+        if (idx === 0 && slideContent.includes("theme:")) return // Skip global frontmatter
+        if (slideContent.trim()) {
+          parsedSlides.push({
+            frontmatter: {},
+            content: slideContent.replace(/^---\n[\s\S]*?\n---\n?/, "").trim(),
+            raw: slideContent,
+          })
+        }
+      })
     }
 
     return parsedSlides
