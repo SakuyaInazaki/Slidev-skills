@@ -1,0 +1,149 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// USER & AUTH
+// ============================================================
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  accounts      Account[]
+  sessions      Session[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Subscription
+  subscription  Subscription?
+  usageLogs     UsageLog[]
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// ============================================================
+// SUBSCRIPTION
+// ============================================================
+
+enum PlanType {
+  FREE
+  PRO
+  UNLIMITED
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELED
+  PAST_DUE
+  TRIALING
+  INCOMPLETE
+  INCOMPLETE_EXPIRED
+  UNPAID
+}
+
+model Subscription {
+  id                String              @id @default(cuid())
+  userId            String              @unique
+  user              User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Plan details
+  planType          PlanType            @default(FREE)
+  status            SubscriptionStatus  @default(TRIALING)
+
+  // Stripe
+  stripeCustomerId   String?             @unique
+  stripeSubscriptionId String?          @unique
+  stripePriceId      String?
+
+  // Quotas (per month)
+  claudeQuota       Int                 @default(10)    // Free: 10, Pro: 1000, Unlimited: -1
+  imageQuota        Int                 @default(5)     // Free: 5, Pro: 100, Unlimited: -1
+
+  // Usage tracking (current month)
+  claudeUsed        Int                 @default(0)
+  imageUsed         Int                 @default(0)
+
+  // Dates
+  trialEndsAt       DateTime?
+  currentPeriodEnd  DateTime?
+  cancelAtPeriodEnd Boolean             @default(false)
+
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  @@map("subscriptions")
+}
+
+// ============================================================
+// USAGE LOGGING
+// ============================================================
+
+enum ApiType {
+  CLAUDE_CHAT
+  IMAGE_GENERATION
+}
+
+model UsageLog {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  apiType     ApiType
+  tokensUsed  Int?      // For Claude
+  prompt      String?   @db.Text // For image generation prompts
+
+  createdAt   DateTime  @default(now())
+
+  @@index([userId, createdAt])
+  @@map("usage_logs")
+}

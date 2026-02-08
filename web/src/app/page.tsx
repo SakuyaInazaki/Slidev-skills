@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import { useSession, signOut } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Select } from "@/components/ui/select"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -18,6 +19,10 @@ import {
   Wand2,
   PanelLeft,
   PanelRight,
+  LogOut,
+  User,
+  Crown,
+  Zap,
 } from "lucide-react"
 import { convertToSlidev, downloadSlides, THEMES, TRANSITIONS, type ConversionOptions } from "@/lib/converter"
 import { ChatPanel, type Message } from "@/components/chat-panel"
@@ -78,6 +83,7 @@ Questions?
 `
 
 export default function Home() {
+  const { data: session, status } = useSession()
   const [input, setInput] = useState(SAMPLE_MARKDOWN)
   const [output, setOutput] = useState("")
   const [theme, setTheme] = useState("seriph")
@@ -96,6 +102,9 @@ export default function Home() {
   const [isProcessing, setIsProcessing] = useState(false)
   const [claudeApiKey, setClaudeApiKey] = useState("")
   const [replicateApiKey, setReplicateApiKey] = useState("")
+
+  // Subscription state (would be fetched from API)
+  const [subscription, setSubscription] = useState<{ plan: string; claudeQuota: number; claudeUsed: number; imageQuota: number; imageUsed: number } | null>(null)
 
   // View state
   const [showPreview, setShowPreview] = useState(true)
@@ -256,6 +265,67 @@ export default function Home() {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              {/* User Info */}
+              {status === "loading" ? (
+                <div className="h-8 w-8 rounded-full bg-muted animate-pulse" />
+              ) : session?.user ? (
+                <div className="flex items-center gap-3">
+                  {/* Subscription Badge */}
+                  {subscription && (
+                    <div className={`hidden sm:flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
+                      subscription.plan === "UNLIMITED"
+                        ? "bg-gradient-to-r from-yellow-500 to-orange-500 text-white"
+                        : subscription.plan === "PRO"
+                        ? "bg-gradient-to-r from-blue-500 to-purple-500 text-white"
+                        : "bg-muted text-muted-foreground"
+                    }`}>
+                      {subscription.plan === "UNLIMITED" ? (
+                        <Zap className="h-3 w-3" />
+                      ) : subscription.plan === "PRO" ? (
+                        <Crown className="h-3 w-3" />
+                      ) : null}
+                      {subscription.plan === "FREE" ? "Free" : subscription.plan === "PRO" ? "Pro" : "Unlimited"}
+                    </div>
+                  )}
+
+                  {/* Usage Stats */}
+                  {subscription && (
+                    <div className="hidden md:flex items-center gap-3 text-xs text-muted-foreground">
+                      <span>AI: {subscription.claudeUsed}/{subscription.claudeQuota === -1 ? "∞" : subscription.claudeQuota}</span>
+                      <span>Images: {subscription.imageUsed}/{subscription.imageQuota === -1 ? "∞" : subscription.imageQuota}</span>
+                    </div>
+                  )}
+
+                  {/* User Menu */}
+                  <div className="flex items-center gap-2 pl-2 border-l">
+                    {session.user.image && (
+                      <img
+                        src={session.user.image}
+                        alt={session.user.name || "User"}
+                        className="h-8 w-8 rounded-full"
+                      />
+                    )}
+                    <span className="hidden sm:inline text-sm font-medium">{session.user.name}</span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => signOut()}
+                      title="Sign out"
+                    >
+                      <LogOut className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <Button asChild size="sm">
+                  <a href="/login">
+                    <User className="h-4 w-4 mr-2" />
+                    Sign In
+                  </a>
+                </Button>
+              )}
+
               <ApiSettings
                 onClaudeKeyChange={setClaudeApiKey}
                 onReplicateKeyChange={setReplicateApiKey}
