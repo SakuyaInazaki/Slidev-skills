@@ -109,7 +109,7 @@ export function ApiSettings({ onClaudeKeyChange, onReplicateKeyChange }: ApiSett
           </Button>
         </div>
         <CardDescription>
-          Configure your API keys for AI features. Keys are stored locally in your browser.
+          API keys are optional. Use your own keys or leave empty to use the provided service.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

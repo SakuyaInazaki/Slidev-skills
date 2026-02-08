@@ -9,7 +9,7 @@ interface ClaudeMessage {
 
 interface ClaudeRequestBody {
   messages: ClaudeMessage[]
-  apiKey: string
+  apiKey?: string // Optional, will use server key if not provided
   slidevContent?: string
   originalMarkdown?: string
 }
@@ -87,12 +87,15 @@ async function callClaudeAPI(messages: ClaudeMessage[], apiKey: string) {
 export async function POST(req: NextRequest) {
   try {
     const body: ClaudeRequestBody = await req.json()
-    const { messages, apiKey, slidevContent, originalMarkdown } = body
+    const { messages, apiKey: userApiKey, slidevContent, originalMarkdown } = body
+
+    // Use server-side API key if user didn't provide one
+    const apiKey = userApiKey || process.env.ANTHROPIC_API_KEY
 
     if (!apiKey) {
       return NextResponse.json(
-        { error: "API key is required" },
-        { status: 400 }
+        { error: "API key is required. Please provide your own key or contact support." },
+        { status: 401 }
       )
     }
 

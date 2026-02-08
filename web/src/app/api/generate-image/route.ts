@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server"
 export const runtime = "edge"
 
 interface ImageGenerationRequest {
-  apiKey: string
+  apiKey?: string // Optional, will use server key if not provided
   prompt: string
   model?: string
   width?: number
@@ -69,12 +69,15 @@ async function generateImage(prompt: string, apiKey: string, model: string = DEF
 export async function POST(req: NextRequest) {
   try {
     const body: ImageGenerationRequest = await req.json()
-    const { apiKey, prompt, model } = body
+    const { apiKey: userApiKey, prompt, model } = body
+
+    // Use server-side API key if user didn't provide one
+    const apiKey = userApiKey || process.env.REPLICATE_API_KEY
 
     if (!apiKey) {
       return NextResponse.json(
-        { error: "API key is required" },
-        { status: 400 }
+        { error: "API key is required. Please provide your own key or contact support." },
+        { status: 401 }
       )
     }
 

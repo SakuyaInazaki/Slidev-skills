@@ -150,16 +150,6 @@ export default function Home() {
 
   // Handle AI chat messages
   const handleSendMessage = useCallback(async (userMessage: string) => {
-    if (!claudeApiKey) {
-      setMessages(prev => [...prev, {
-        id: Date.now().toString(),
-        role: "assistant",
-        content: "Please add your Claude API key in the API Settings first. You can get one at https://console.anthropic.com/",
-        timestamp: new Date(),
-      }])
-      return
-    }
-
     // Add user message
     const newUserMessage: Message = {
       id: Date.now().toString(),
@@ -188,14 +178,15 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           messages: claudeMessages,
-          apiKey: claudeApiKey,
+          apiKey: claudeApiKey || undefined, // Send undefined if not set, server will use env var
           slidevContent: output,
           originalMarkdown: input,
         }),
       })
 
       if (!response.ok) {
-        throw new Error("Failed to get response from Claude")
+        const errorData = await response.json()
+        throw new Error(errorData.error || "Failed to get response from Claude")
       }
 
       const data = await response.json()
@@ -213,7 +204,7 @@ export default function Home() {
       setMessages(prev => [...prev, {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: "Sorry, I encountered an error. Please check your API key and try again.",
+        content: `Error: ${error instanceof Error ? error.message : "Unknown error"}. ${!claudeApiKey ? "\n\n💡 Tip: You can add your own API key in Settings, or contact support for access." : ""}`,
         timestamp: new Date(),
       }])
     } finally {
@@ -223,21 +214,11 @@ export default function Home() {
 
   // Handle adding image to slide
   const handleAddImage = async (slideIndex: number) => {
-    if (!replicateApiKey) {
-      setMessages(prev => [...prev, {
-        id: Date.now().toString(),
-        role: "assistant",
-        content: "Please add your Replicate API key in the API Settings first. You can get one at https://replicate.com/account/api-tokens",
-        timestamp: new Date(),
-      }])
-      return
-    }
-
     // Ask user what image they want
     setMessages(prev => [...prev, {
       id: Date.now().toString(),
       role: "assistant",
-      content: `What kind of image would you like to generate for slide ${slideIndex + 1}? Please describe the image you want.`,
+      content: `What kind of image would you like to generate for slide ${slideIndex + 1}? Please describe the image you want.${!replicateApiKey ? "\n\n💡 You can add your own Replicate API key in Settings, or use the provided service." : ""}`,
       timestamp: new Date(),
     }])
   }
