@@ -96,27 +96,18 @@ export default function Home() {
   const [messages, setMessages] = useState<Message[]>([{
     id: "welcome",
     role: "assistant",
-    content: "Hi! I'm your Slidev assistant. I can help you:\n\n• Optimize slide layouts\n• Generate images for your slides\n• Improve content and design\n\nJust ask me anything!",
+    content: "Hi! I'm your Slidev assistant.\n\nWith the **Free plan**, you can convert Markdown to Slidev and preview your slides.\n\nUpgrade to **Pro** to unlock AI features:\n• Layout optimization\n• Image generation\n• Chat assistance\n\n[Upgrade to Pro](/pricing)",
     timestamp: new Date(),
   }])
   const [isProcessing, setIsProcessing] = useState(false)
-  const [claudeApiKey, setClaudeApiKey] = useState("")
-  const [replicateApiKey, setReplicateApiKey] = useState("")
 
   // Subscription state (would be fetched from API)
-  const [subscription, setSubscription] = useState<{ plan: string; claudeQuota: number; claudeUsed: number; imageQuota: number; imageUsed: number } | null>(null)
+  // null = not logged in, { hasAiAccess: false } = Free, { hasAiAccess: true } = Pro
+  const [subscription, setSubscription] = useState<{ hasAiAccess: boolean } | null>(null)
 
   // View state
   const [showPreview, setShowPreview] = useState(true)
   const [activePanel, setActivePanel] = useState<"editor" | "preview">("editor")
-
-  // Load API keys from localStorage on mount
-  useEffect(() => {
-    const savedClaude = localStorage.getItem("claude-api-key")
-    const savedReplicate = localStorage.getItem("replicate-api-key")
-    if (savedClaude) setClaudeApiKey(savedClaude)
-    if (savedReplicate) setReplicateApiKey(savedReplicate)
-  }, [])
 
   // Convert markdown to slidev
   const convert = () => {
@@ -159,6 +150,17 @@ export default function Home() {
 
   // Handle AI chat messages
   const handleSendMessage = useCallback(async (userMessage: string) => {
+    // Check if user has AI access
+    if (session?.user && !subscription?.hasAiAccess) {
+      setMessages(prev => [...prev, {
+        id: Date.now().toString(),
+        role: "assistant",
+        content: "AI features are available for Pro subscribers.\n\n**Free Plan:**\n• Convert Markdown to Slidev\n• Live preview\n• Download slides\n\n**Pro Plan:**\n• Everything in Free\n• AI-powered layout optimization\n• AI image generation\n• Chat assistance\n\n[Upgrade to Pro](/pricing)",
+        timestamp: new Date(),
+      }])
+      return
+    }
+
     // Add user message
     const newUserMessage: Message = {
       id: Date.now().toString(),
@@ -187,7 +189,6 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           messages: claudeMessages,
-          apiKey: claudeApiKey || undefined, // Send undefined if not set, server will use env var
           slidevContent: output,
           originalMarkdown: input,
         }),
@@ -213,21 +214,32 @@ export default function Home() {
       setMessages(prev => [...prev, {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: `Error: ${error instanceof Error ? error.message : "Unknown error"}. ${!claudeApiKey ? "\n\n💡 Tip: You can add your own API key in Settings, or contact support for access." : ""}`,
+        content: `Error: ${error instanceof Error ? error.message : "Unknown error"}.`,
         timestamp: new Date(),
       }])
     } finally {
       setIsProcessing(false)
     }
-  }, [claudeApiKey, messages, output, input])
+  }, [session, subscription, messages, output, input])
 
   // Handle adding image to slide
   const handleAddImage = async (slideIndex: number) => {
+    // Check if user has AI access
+    if (session?.user && !subscription?.hasAiAccess) {
+      setMessages(prev => [...prev, {
+        id: Date.now().toString(),
+        role: "assistant",
+        content: "Image generation is a Pro feature.\n\n[Upgrade to Pro](/pricing) to unlock AI image generation for your slides.",
+        timestamp: new Date(),
+      }])
+      return
+    }
+
     // Ask user what image they want
     setMessages(prev => [...prev, {
       id: Date.now().toString(),
       role: "assistant",
-      content: `What kind of image would you like to generate for slide ${slideIndex + 1}? Please describe the image you want.${!replicateApiKey ? "\n\n💡 You can add your own Replicate API key in Settings, or use the provided service." : ""}`,
+      content: `What kind of image would you like to generate for slide ${slideIndex + 1}? Please describe the image you want.`,
       timestamp: new Date(),
     }])
   }
@@ -271,28 +283,17 @@ export default function Home() {
               ) : session?.user ? (
                 <div className="flex items-center gap-3">
                   {/* Subscription Badge */}
+                  {/* Subscription Badge */}
                   {subscription && (
                     <div className={`hidden sm:flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
-                      subscription.plan === "UNLIMITED"
-                        ? "bg-gradient-to-r from-yellow-500 to-orange-500 text-white"
-                        : subscription.plan === "PRO"
+                      subscription.hasAiAccess
                         ? "bg-gradient-to-r from-blue-500 to-purple-500 text-white"
                         : "bg-muted text-muted-foreground"
                     }`}>
-                      {subscription.plan === "UNLIMITED" ? (
-                        <Zap className="h-3 w-3" />
-                      ) : subscription.plan === "PRO" ? (
-                        <Crown className="h-3 w-3" />
+                      {subscription.hasAiAccess ? (
+                        <Sparkles className="h-3 w-3" />
                       ) : null}
-                      {subscription.plan === "FREE" ? "Free" : subscription.plan === "PRO" ? "Pro" : "Unlimited"}
-                    </div>
-                  )}
-
-                  {/* Usage Stats */}
-                  {subscription && (
-                    <div className="hidden md:flex items-center gap-3 text-xs text-muted-foreground">
-                      <span>AI: {subscription.claudeUsed}/{subscription.claudeQuota === -1 ? "∞" : subscription.claudeQuota}</span>
-                      <span>Images: {subscription.imageUsed}/{subscription.imageQuota === -1 ? "∞" : subscription.imageQuota}</span>
+                      {subscription.hasAiAccess ? "Pro" : "Free"}
                     </div>
                   )}
 
@@ -326,10 +327,19 @@ export default function Home() {
                 </Button>
               )}
 
-              <ApiSettings
-                onClaudeKeyChange={setClaudeApiKey}
-                onReplicateKeyChange={setReplicateApiKey}
-              />
+              {/* Upgrade button for free users */}
+              {session?.user && !subscription?.hasAiAccess && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  asChild
+                  title="Upgrade to Pro"
+                >
+                  <a href="/pricing">
+                    <Crown className="h-5 w-5" />
+                  </a>
+                </Button>
+              )}
               <Button
                 variant="ghost"
                 size="icon"

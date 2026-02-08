@@ -78,17 +78,12 @@ model VerificationToken {
 enum PlanType {
   FREE
   PRO
-  UNLIMITED
 }
 
 enum SubscriptionStatus {
   ACTIVE
   CANCELED
-  PAST_DUE
   TRIALING
-  INCOMPLETE
-  INCOMPLETE_EXPIRED
-  UNPAID
 }
 
 model Subscription {
@@ -100,18 +95,14 @@ model Subscription {
   planType          PlanType            @default(FREE)
   status            SubscriptionStatus  @default(TRIALING)
 
-  // Stripe
-  stripeCustomerId   String?             @unique
-  stripeSubscriptionId String?          @unique
-  stripePriceId      String?
+  // Quotas (per month) - Pro users get AI access
+  // FREE: No AI features
+  // PRO: Unlimited AI (you manage costs server-side)
+  hasAiAccess       Boolean             @default(false)
 
-  // Quotas (per month)
-  claudeQuota       Int                 @default(10)    // Free: 10, Pro: 1000, Unlimited: -1
-  imageQuota        Int                 @default(5)     // Free: 5, Pro: 100, Unlimited: -1
-
-  // Usage tracking (current month)
-  claudeUsed        Int                 @default(0)
-  imageUsed         Int                 @default(0)
+  // Usage tracking (for your analytics)
+  claudeCallsUsed   Int                 @default(0)
+  imagesGenerated   Int                 @default(0)
 
   // Dates
   trialEndsAt       DateTime?
@@ -139,8 +130,7 @@ model UsageLog {
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   apiType     ApiType
-  tokensUsed  Int?      // For Claude
-  prompt      String?   @db.Text // For image generation prompts
+  prompt      String?   @db.Text // For analytics and cost tracking
 
   createdAt   DateTime  @default(now())
 
