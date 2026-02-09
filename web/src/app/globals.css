@@ -56,7 +56,7 @@
 
 /* Slide Preview Styles */
 .slide-preview {
-  @apply overflow-hidden;
+  @apply overflow-auto;
 }
 
 .slide-preview-cover {
