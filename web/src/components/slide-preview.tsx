@@ -260,21 +260,21 @@ export function SlidePreview({ content, theme = "seriph", onAddImage, onUploadIm
           }}
         >
           {currentSlideData?.frontmatter?.layout === "cover" ? (
-            <div className="h-full flex flex-col items-center justify-center text-center">
+            <div className="h-full flex flex-col items-center justify-center text-center overflow-auto">
               {renderSlideContent()}
             </div>
           ) : currentSlideData?.frontmatter?.layout === "center" ? (
-            <div className="h-full flex items-center justify-center">
+            <div className="h-full flex items-center justify-center overflow-auto">
               {renderSlideContent()}
             </div>
           ) : currentSlideData?.frontmatter?.layout === "quote" ? (
-            <div className="h-full flex items-center justify-center">
+            <div className="h-full flex items-center justify-center overflow-auto">
               <blockquote className="text-2xl italic border-l-4 border-primary pl-6">
                 {renderSlideContent()}
               </blockquote>
             </div>
           ) : (
-            <div className="h-full">
+            <div className="h-full overflow-auto">
               {renderSlideContent()}
             </div>
           )}
