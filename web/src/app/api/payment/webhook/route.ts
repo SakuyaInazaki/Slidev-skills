@@ -49,8 +49,8 @@ async function handlePayJSCallback(req: NextRequest) {
     data: {
       userId,
       amount: Number(body.total_fee) / 100, // 转换为元
-      method: "wechat", // 或支付宝
-      status: "paid",
+      method: "WECHAT",
+      status: "PAID",
       transaction: body.transaction_id,
     },
   })
