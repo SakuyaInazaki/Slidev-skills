@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
+import { auth } from "@/auth"
+import { checkUsageLimit, recordUsage } from "@/lib/rate-limit"
 
 export const runtime = "edge"
 
@@ -81,11 +83,34 @@ async function callClaudeAPI(messages: ClaudeMessage[], apiKey: string) {
   }
 
   const data = await response.json()
-  return data.content[0].text
+  return {
+    text: data.content[0].text,
+    usage: data.usage || { input_tokens: 0, output_tokens: 0 },
+  }
 }
 
 export async function POST(req: NextRequest) {
   try {
+    // Check authentication
+    const session = await auth()
+    if (!session?.user) {
+      return NextResponse.json(
+        { error: "Authentication required. Please sign in." },
+        { status: 401 }
+      )
+    }
+
+    const userId = session.user.id
+
+    // Check usage limit for chat feature
+    const usageCheck = await checkUsageLimit(userId, "chat")
+    if (!usageCheck.allowed) {
+      return NextResponse.json(
+        { error: usageCheck.reason },
+        { status: 429 }
+      )
+    }
+
     const body: ClaudeRequestBody = await req.json()
     const { messages, apiKey: userApiKey, slidevContent, originalMarkdown } = body
 
@@ -117,12 +142,18 @@ export async function POST(req: NextRequest) {
       lastUserMsg.content = contextPrompt
     }
 
-    const response = await callClaudeAPI(enhancedMessages, apiKey)
+    const result = await callClaudeAPI(enhancedMessages, apiKey)
+
+    // Record usage (total tokens used)
+    const totalTokens = result.usage.input_tokens + result.usage.output_tokens
+    await recordUsage(userId, "chat", totalTokens)
 
     return NextResponse.json({
-      response,
+      response: result.text,
       usage: {
-        // Claude returns usage info in the response
+        inputTokens: result.usage.input_tokens,
+        outputTokens: result.usage.output_tokens,
+        totalTokens,
       }
     })
 

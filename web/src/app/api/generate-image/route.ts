@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
+import { auth } from "@/auth"
+import { checkUsageLimit, recordUsage } from "@/lib/rate-limit"
 
-export const runtime = "edge"
+export const runtime = "nodejs" // Changed from edge to support database operations
 
 interface ImageGenerationRequest {
   apiKey?: string // Optional, will use server key if not provided
@@ -68,11 +70,31 @@ async function generateImage(prompt: string, apiKey: string, model: string = DEF
 
 export async function POST(req: NextRequest) {
   try {
+    // Check authentication
+    const session = await auth()
+    if (!session?.user) {
+      return NextResponse.json(
+        { error: "Authentication required. Please sign in." },
+        { status: 401 }
+      )
+    }
+
+    const userId = session.user.id
+
+    // Check usage limit for image generation
+    const usageCheck = await checkUsageLimit(userId, "image")
+    if (!usageCheck.allowed) {
+      return NextResponse.json(
+        { error: usageCheck.reason },
+        { status: 429 }
+      )
+    }
+
     const body: ImageGenerationRequest = await req.json()
     const { apiKey: userApiKey, prompt, model } = body
 
     // Use server-side API key if user didn't provide one
-    const apiKey = userApiKey || process.env.REPLICATE_API_KEY
+    const apiKey = userApiKey || process.env.REPLICATE_API_TOKEN
 
     if (!apiKey) {
       return NextResponse.json(
@@ -90,6 +112,9 @@ export async function POST(req: NextRequest) {
 
     // Generate the image
     const imageUrl = await generateImage(prompt, apiKey, model)
+
+    // Record usage
+    await recordUsage(userId, "image")
 
     return NextResponse.json({
       imageUrl,

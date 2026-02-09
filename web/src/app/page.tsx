@@ -28,6 +28,7 @@ import { convertToSlidev, downloadSlides, THEMES, TRANSITIONS, type ConversionOp
 import { ChatPanel, type Message } from "@/components/chat-panel"
 import { ApiSettings } from "@/components/api-settings"
 import { SlidePreview } from "@/components/slide-preview"
+import { UsageDashboard } from "@/components/usage-dashboard"
 
 // Monaco editor is loaded dynamically
 const MonacoEditor = dynamic(() => import("@/components/monaco-editor"), {
@@ -469,6 +470,13 @@ export default function Home() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Usage Dashboard for Pro Users */}
+        {subscription?.hasAiAccess && (
+          <div className="mb-6">
+            <UsageDashboard userId={session?.user?.id} />
+          </div>
+        )}
 
         {/* Editor, Output, Preview */}
         <div className={`grid gap-6 ${showPreview ? "grid-cols-1 lg:grid-cols-3" : "grid-cols-1 lg:grid-cols-2"}`}>
