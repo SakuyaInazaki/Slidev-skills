@@ -18,12 +18,12 @@ model User {
   id            String    @id @default(cuid())
   name          String?
   email         String?   @unique
-  emailVerified DateTime?
+  emailVerified DateTime? @map("emailverified")
   image         String?
   accounts      Account[]
   sessions      Session[]
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt     DateTime  @default(now()) @map("createdat")
+  updatedAt     DateTime  @updatedAt @map("updatedat")
 
   // Subscription
   subscription  Subscription?
@@ -35,10 +35,10 @@ model User {
 
 model Account {
   id                String  @id @default(cuid())
-  userId            String
+  userId            String  @map("userid")
   type              String
   provider          String
-  providerAccountId String
+  providerAccountId String  @map("provideraccountid")
   refresh_token     String? @db.Text
   access_token      String? @db.Text
   expires_at        Int?
@@ -55,8 +55,8 @@ model Account {
 
 model Session {
   id           String   @id @default(cuid())
-  sessionToken String   @unique
-  userId       String
+  sessionToken String   @unique @map("sessiontoken")
+  userId       String   @map("userid")
   expires      DateTime
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -89,35 +89,35 @@ enum SubscriptionStatus {
 
 model Subscription {
   id                String              @id @default(cuid())
-  userId            String              @unique
+  userId            String              @unique @map("userid")
   user              User                @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // Plan details
-  planType          PlanType            @default(FREE)
-  status            SubscriptionStatus  @default(TRIALING)
+  planType          PlanType            @default(FREE) @map("plantype")
+  status            SubscriptionStatus  @default(TRIALING) @map("status")
 
   // AI Quota (fixed monthly amount for Pro users)
   // You buy API keys with a fixed monthly budget
-  monthlyTokens     Int                 @default(0)    // e.g., 50K or 100K tokens per month
-  tokensUsed        Int                 @default(0)
-  imagesAllowed     Int                 @default(0)    // e.g., 50 images per month
-  imagesGenerated   Int                 @default(0)
+  monthlyTokens     Int                 @default(0) @map("monthlytokens")   // e.g., 50K or 100K tokens per month
+  tokensUsed        Int                 @default(0) @map("tokensused")
+  imagesAllowed     Int                 @default(0) @map("imagesallowed")   // e.g., 50 images per month
+  imagesGenerated   Int                 @default(0) @map("imagesgenerated")
 
   // Derived helper
-  hasAiAccess       Boolean             @default(false)
+  hasAiAccess       Boolean             @default(false) @map("hasaiaccess")
 
   // Dates
-  trialEndsAt       DateTime?
-  currentPeriodStart DateTime?
-  currentPeriodEnd  DateTime?
-  cancelAtPeriodEnd Boolean             @default(false)
+  trialEndsAt       DateTime?           @map("trialendsat")
+  currentPeriodStart DateTime?          @map("currentperiodstart")
+  currentPeriodEnd  DateTime?           @map("currentperiodend")
+  cancelAtPeriodEnd Boolean             @default(false) @map("cancelatperiodend")
 
   // Stripe
-  stripeCustomerId      String?         @unique
-  stripeSubscriptionId  String?         @unique
+  stripeCustomerId      String?         @unique @map("stripecustomerid")
+  stripeSubscriptionId  String?         @unique @map("stripesubscriptionid")
 
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @updatedAt
+  createdAt         DateTime            @default(now()) @map("createdat")
+  updatedAt         DateTime            @updatedAt @map("updatedat")
 
   @@map("subscriptions")
 }
@@ -134,13 +134,13 @@ enum ApiType {
 
 model UsageLog {
   id          String    @id @default(cuid())
-  userId      String
+  userId      String    @map("userid")
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  apiType     ApiType
+  apiType     ApiType   @map("apitype")
   prompt      String?   @db.Text // For analytics and cost tracking
 
-  createdAt   DateTime  @default(now())
+  createdAt   DateTime  @default(now()) @map("createdat")
 
   @@index([userId, createdAt])
   @@map("usage_logs")
@@ -165,7 +165,7 @@ enum PaymentStatus {
 
 model PaymentOrder {
   id          String        @id @default(cuid())
-  userId      String
+  userId      String        @map("userid")
   user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   amount      Decimal       @db.Decimal(10, 2)
@@ -173,10 +173,10 @@ model PaymentOrder {
   status      PaymentStatus @default(PENDING)
 
   transaction String?       @unique // Third-party transaction ID
-  outTradeNo  String?       @unique // Our order ID
+  outTradeNo  String?       @unique @map("outtradeno") // Our order ID
 
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  createdAt   DateTime      @default(now()) @map("createdat")
+  updatedAt   DateTime      @updatedAt @map("updatedat")
 
   @@index([userId, status])
   @@map("payment_orders")
