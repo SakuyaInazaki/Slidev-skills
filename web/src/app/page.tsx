@@ -169,12 +169,12 @@ function scoreMarkdownContent(content: string, lang: string) {
 }
 
 function extractMarkdownFromResponse(response: string) {
-  const startIndex = response.indexOf(SLIDEV_BLOCK_START)
-  if (startIndex >= 0) {
-    const endIndex = response.indexOf(SLIDEV_BLOCK_END, startIndex + SLIDEV_BLOCK_START.length)
-    if (endIndex > startIndex) {
+  const sentinelStart = response.indexOf(SLIDEV_BLOCK_START)
+  if (sentinelStart >= 0) {
+    const sentinelEnd = response.indexOf(SLIDEV_BLOCK_END, sentinelStart + SLIDEV_BLOCK_START.length)
+    if (sentinelEnd > sentinelStart) {
       const content = response
-        .slice(startIndex + SLIDEV_BLOCK_START.length, endIndex)
+        .slice(sentinelStart + SLIDEV_BLOCK_START.length, sentinelEnd)
         .trim()
       if (content.length) return content
     }
@@ -212,15 +212,15 @@ function extractMarkdownFromResponse(response: string) {
     return sorted[0].content || null
   }
 
-  const startIndex = lines.findIndex((line) => {
+  const contentStart = lines.findIndex((line) => {
     const trimmed = line.trim()
     if (!trimmed) return false
     if (trimmed === "---") return true
     return /^theme:|^title:|^layout:/i.test(trimmed)
   })
 
-  if (startIndex === -1) return null
-  const content = lines.slice(startIndex).join("\n").trim()
+  if (contentStart === -1) return null
+  const content = lines.slice(contentStart).join("\n").trim()
   return content.length ? content : null
 }
 

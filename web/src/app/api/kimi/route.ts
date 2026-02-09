@@ -97,7 +97,7 @@ const SYSTEM_PROMPT = `你是一位“演示导演 + 视觉叙事设计师”，
 当你建议改动时，请按以下格式：
 1. 变更摘要（简短列表）
 2. 完整的 Slidev Markdown（可直接粘贴）
-   - **必须**包裹在以下标记之间（不要用 ``` 包裹）：
+   - **必须**包裹在以下标记之间（不要用三反引号围栏）：
      ${SLIDEV_BLOCK_START}
      ...Slidev Markdown...
      ${SLIDEV_BLOCK_END}
