@@ -77,25 +77,14 @@ model VerificationToken {
 // SUBSCRIPTION
 // ============================================================
 
-enum PlanType {
-  FREE
-  PRO
-}
-
-enum SubscriptionStatus {
-  ACTIVE
-  CANCELED
-  TRIALING
-}
-
 model Subscription {
   id                String              @id @default(cuid())
   userId            String              @unique @map("userid")
   user              User                @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // Plan details
-  planType          PlanType            @default(FREE) @map("plantype")
-  status            SubscriptionStatus  @default(TRIALING) @map("status")
+  planType          String              @default("FREE") @map("plantype") @db.Text
+  status            String              @default("TRIALING") @map("status") @db.Text
 
   // AI Quota (fixed monthly amount for Pro users)
   // You buy API keys with a fixed monthly budget
@@ -127,18 +116,12 @@ model Subscription {
 // USAGE LOGGING
 // ============================================================
 
-enum ApiType {
-  CLAUDE_CHAT
-  KIMI_CHAT
-  IMAGE_GENERATION
-}
-
 model UsageLog {
   id          String    @id @default(cuid())
   userId      String    @map("userid")
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  apiType     ApiType   @map("apitype")
+  apiType     String    @map("apitype") @db.Text
   prompt      String?   @db.Text // For analytics and cost tracking
 
   createdAt   DateTime  @default(now()) @map("createdat")
@@ -151,27 +134,14 @@ model UsageLog {
 // PAYMENT ORDERS (for domestic payment platforms)
 // ============================================================
 
-enum PaymentMethod {
-  WECHAT
-  ALIPAY
-  MANUAL
-}
-
-enum PaymentStatus {
-  PENDING
-  PAID
-  FAILED
-  REFUNDED
-}
-
 model PaymentOrder {
   id          String        @id @default(cuid())
   userId      String        @map("userid")
   user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   amount      Decimal       @db.Decimal(10, 2)
-  method      PaymentMethod
-  status      PaymentStatus @default(PENDING)
+  method      String        @db.Text
+  status      String        @default("PENDING") @db.Text
 
   transaction String?       @unique // Third-party transaction ID
   outTradeNo  String?       @unique @map("outtradeno") // Our order ID
