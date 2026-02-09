@@ -33,16 +33,14 @@ const INTENT_KEYWORDS = [
   "优化", "改", "调整", "润色", "重写", "生成", "制作", "帮我", "请帮", "布局", "排版",
   "图片", "配色", "动画", "主题", "结构", "逻辑", "拆分", "总结", "转成", "转换",
   "slidev", "markdown", "ppt", "演示", "幻灯片",
+  "optimize", "improve", "rewrite", "generate", "design", "layout",
 ]
 
-function isGreetingOnly(text: string) {
+function hasExplicitIntent(text: string) {
   const trimmed = text.trim()
-  if (!trimmed) return true
-  if (trimmed.length > 12) return false
+  if (!trimmed) return false
   const lowered = trimmed.toLowerCase()
-  const isGreeting = GREETING_PATTERNS.some((pattern) => pattern.test(trimmed))
-  const hasIntent = INTENT_KEYWORDS.some((keyword) => lowered.includes(keyword))
-  return !hasIntent && isGreeting
+  return INTENT_KEYWORDS.some((keyword) => lowered.includes(keyword))
 }
 
 const SLIDEV_LAYOUTS = [
@@ -180,11 +178,11 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // If user just greets, ask for clarification instead of dumping a full rewrite
+    // If user did not provide an explicit request, ask for clarification
     const lastUserMessage = [...messages].reverse().find(m => m.role === "user")
-    if (lastUserMessage && isGreetingOnly(lastUserMessage.content)) {
+    if (lastUserMessage && !hasExplicitIntent(lastUserMessage.content)) {
       return NextResponse.json({
-        response: "你好！我可以帮你优化 Slidev 结构、布局和文案。请告诉我你的目标或贴一段内容，比如：\n- 帮我优化这个标题页\n- 这段内容该怎么拆成 5 页\n- 给第 3 页建议布局",
+        response: "你好！我需要你**明确想要的操作**，比如：\n- 帮我优化这个标题页\n- 把这段内容拆成 5 页\n- 给第 3 页建议布局\n\n你也可以直接贴出要处理的内容。",
         usage: {
           inputTokens: 0,
           outputTokens: 0,
