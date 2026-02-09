@@ -3,6 +3,19 @@ import { prisma } from "@/lib/prisma"
 
 export const runtime = "nodejs"
 
+const BEIJING_TZ = "Asia/Shanghai"
+
+function getBeijingDateParts(date: Date) {
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone: BEIJING_TZ,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  })
+  const [year, month, day] = formatter.format(date).split("-")
+  return { year, month, day }
+}
+
 export async function GET(req: NextRequest) {
   const secret = process.env.CRON_SECRET
   const headerToken = req.headers.get("authorization")?.replace("Bearer ", "")
@@ -15,7 +28,21 @@ export async function GET(req: NextRequest) {
   }
 
   const now = new Date()
-  const periodEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+  const { year, month, day } = getBeijingDateParts(now)
+
+  // Only run on Beijing's first day of the month
+  if (day !== "01") {
+    return NextResponse.json({
+      ok: true,
+      skipped: true,
+      reason: "Not the first day in Beijing timezone",
+      beijingDate: `${year}-${month}-${day}`,
+    })
+  }
+
+  const periodStart = new Date(`${year}-${month}-01T00:00:00+08:00`)
+  const periodEnd = new Date(periodStart)
+  periodEnd.setMonth(periodEnd.getMonth() + 1)
 
   const result = await prisma.subscription.updateMany({
     where: {
@@ -24,7 +51,7 @@ export async function GET(req: NextRequest) {
     data: {
       tokensUsed: 0,
       imagesGenerated: 0,
-      currentPeriodStart: now,
+      currentPeriodStart: periodStart,
       currentPeriodEnd: periodEnd,
     },
   })
@@ -32,7 +59,8 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     ok: true,
     updated: result.count,
-    currentPeriodStart: now,
+    currentPeriodStart: periodStart,
     currentPeriodEnd: periodEnd,
+    timezone: BEIJING_TZ,
   })
 }
