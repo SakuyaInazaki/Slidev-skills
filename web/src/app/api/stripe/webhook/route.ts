@@ -49,8 +49,8 @@ export async function POST(req: NextRequest) {
             planType: "PRO",
             status: "ACTIVE",
             hasAiAccess: true,
-            monthlyTokens: 100000, // You can adjust this
-            imagesAllowed: 100,
+            monthlyTokens: 87000000, // 87M tokens/month (¥20 3-month API = $20, $3.48 = 15.2M tokens)
+            imagesAllowed: 2000, // 2000 images/month using Zhipu AI CogView (~¥36 cost)
             currentPeriodEnd: new Date(stripeSub.current_period_end * 1000),
             currentPeriodStart: new Date(stripeSub.current_period_start * 1000),
             stripeSubscriptionId: subscriptionId,
