@@ -25,11 +25,26 @@ export async function GET(req: NextRequest) {
       subscription = await prisma.subscription.create({
         data: {
           userId,
-          planType: "FREE",
+          planType: "PRO",
           status: "TRIALING",
-          hasAiAccess: false,
+          hasAiAccess: true,
+          monthlyTokens: 10_000_000,
+          imagesAllowed: 1000,
           trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 14 day trial
           currentPeriodStart: new Date(),
+        },
+      })
+    }
+
+    // Ensure trial users have AI access enabled
+    if (subscription.status === "TRIALING" && !subscription.hasAiAccess) {
+      subscription = await prisma.subscription.update({
+        where: { userId },
+        data: {
+          planType: "PRO",
+          hasAiAccess: true,
+          monthlyTokens: subscription.monthlyTokens || 10_000_000,
+          imagesAllowed: subscription.imagesAllowed || 1000,
         },
       })
     }
@@ -45,6 +60,8 @@ export async function GET(req: NextRequest) {
             status: "ACTIVE",
             planType: "FREE",
             hasAiAccess: false,
+            monthlyTokens: 0,
+            imagesAllowed: 0,
           },
         })
       }

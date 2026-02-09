@@ -114,14 +114,15 @@ export default function Home() {
           const res = await fetch("/api/subscription")
           if (res.ok) {
             const data = await res.json()
+            const hasAiAccess = data.hasAiAccess || data.status === "TRIALING"
             setSubscription({
-              hasAiAccess: data.hasAiAccess,
+              hasAiAccess,
               planType: data.planType,
               status: data.status,
             })
 
             // 根据订阅状态设置欢迎消息
-            if (data.hasAiAccess) {
+            if (hasAiAccess) {
               setMessages([{
                 id: "welcome",
                 role: "assistant",
@@ -229,24 +230,35 @@ export default function Home() {
 
   // Handle AI chat messages
   const handleSendMessage = useCallback(async (userMessage: string) => {
-    // Check if user has AI access
-    if (session?.user && !subscription?.hasAiAccess) {
-      setMessages(prev => [...prev, {
-        id: Date.now().toString(),
-        role: "assistant",
-        content: "AI features are available for Pro subscribers.\n\n**Free Plan:**\n• Convert Markdown to Slidev\n• Live preview\n• Download slides\n\n**Pro Plan:**\n• Everything in Free\n• AI-powered layout optimization\n• AI image generation\n• Chat assistance\n\n[Upgrade to Pro](/pricing)",
-        timestamp: new Date(),
-      }])
-      return
-    }
+    const aiAllowed = !!session?.user && (subscription?.hasAiAccess || subscription?.status === "TRIALING")
 
-    // Add user message
+    // Always show the user's message
     const newUserMessage: Message = {
       id: Date.now().toString(),
       role: "user",
       content: userMessage,
       timestamp: new Date(),
     }
+
+    if (session?.user && !aiAllowed) {
+      setMessages(prev => {
+        const lastMessage = prev[prev.length - 1]
+        const upgradeMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: "assistant",
+          content: "AI features are available for Pro subscribers.\n\n**Free Plan:**\n• Convert Markdown to Slidev\n• Live preview\n• Download slides\n\n**Pro Plan:**\n• Everything in Free\n• AI-powered layout optimization\n• AI image generation\n• Chat assistance\n\n[Upgrade to Pro](/pricing)",
+          timestamp: new Date(),
+        }
+
+        if (lastMessage?.role === "assistant" && lastMessage.content.includes("Upgrade to Pro")) {
+          return [...prev, newUserMessage]
+        }
+
+        return [...prev, newUserMessage, upgradeMessage]
+      })
+      return
+    }
+
     setMessages(prev => [...prev, newUserMessage])
     setIsProcessing(true)
 
@@ -305,7 +317,8 @@ export default function Home() {
   // Handle adding image to slide
   const handleAddImage = async (slideIndex: number) => {
     // Check if user has AI access
-    if (session?.user && !subscription?.hasAiAccess) {
+    const aiAllowed = !!session?.user && (subscription?.hasAiAccess || subscription?.status === "TRIALING")
+    if (session?.user && !aiAllowed) {
       setMessages(prev => [...prev, {
         id: Date.now().toString(),
         role: "assistant",
