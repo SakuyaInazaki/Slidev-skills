@@ -48,19 +48,19 @@ export async function POST(req: NextRequest) {
   }
 
   if (isNumber(body.monthlyTokens)) {
-    data.monthlyTokens = Math.max(0, Math.floor(body.monthlyTokens))
+    data.monthlyTokens = Math.max(0, Math.floor(body.monthlyTokens ?? 0))
   }
 
   if (isNumber(body.imagesAllowed)) {
-    data.imagesAllowed = Math.max(0, Math.floor(body.imagesAllowed))
+    data.imagesAllowed = Math.max(0, Math.floor(body.imagesAllowed ?? 0))
   }
 
   if (isNumber(body.tokensUsed)) {
-    data.tokensUsed = Math.max(0, Math.floor(body.tokensUsed))
+    data.tokensUsed = Math.max(0, Math.floor(body.tokensUsed ?? 0))
   }
 
   if (isNumber(body.imagesGenerated)) {
-    data.imagesGenerated = Math.max(0, Math.floor(body.imagesGenerated))
+    data.imagesGenerated = Math.max(0, Math.floor(body.imagesGenerated ?? 0))
   }
 
   if (body.resetUsage) {
