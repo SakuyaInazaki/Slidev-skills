@@ -152,17 +152,11 @@ export function ChatPanel({
                     <div
                       className={`rounded-lg px-3 py-2 max-w-[100%] text-sm ${
                         message.role === "user"
-                          ? "bg-primary text-primary-foreground"
+                          ? "bg-muted text-foreground"
                           : "bg-muted"
                       }`}
                     >
-                      <div
-                        className={`prose prose-sm max-w-none ${
-                          message.role === "user"
-                            ? "text-primary-foreground prose-invert"
-                            : "text-foreground dark:prose-invert"
-                        }`}
-                      >
+                      <div className="prose prose-sm text-foreground dark:prose-invert max-w-none">
                         <p className="whitespace-pre-wrap break-words">{message.content}</p>
                       </div>
                       {message.actions && message.actions.length > 0 && (
