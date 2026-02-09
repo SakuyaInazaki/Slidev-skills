@@ -49,6 +49,9 @@ const SLIDEV_LAYOUTS = [
   "statement", "quote", "iframe"
 ]
 
+const SLIDEV_BLOCK_START = "<<<SLIDEV>>>"
+const SLIDEV_BLOCK_END = "<<<END_SLIDEV>>>"
+
 const SYSTEM_PROMPT = `你是一位“演示导演 + 视觉叙事设计师”，专精 Slidev。你的工作是把零散内容编排成有节奏、有视觉冲击力的演示：清晰、好看、可讲。
 
 ## 你的风格
@@ -94,11 +97,26 @@ const SYSTEM_PROMPT = `你是一位“演示导演 + 视觉叙事设计师”，
 当你建议改动时，请按以下格式：
 1. 变更摘要（简短列表）
 2. 完整的 Slidev Markdown（可直接粘贴）
+   - **必须**包裹在以下标记之间（不要用 ``` 包裹）：
+     ${SLIDEV_BLOCK_START}
+     ...Slidev Markdown...
+     ${SLIDEV_BLOCK_END}
 3. 为什么这样更好（简洁理由）
 
 如果信息不足，先提最多 3 个问题再继续。`
 
 function extractMarkdownBlock(text: string) {
+  const startIndex = text.indexOf(SLIDEV_BLOCK_START)
+  if (startIndex >= 0) {
+    const endIndex = text.indexOf(SLIDEV_BLOCK_END, startIndex + SLIDEV_BLOCK_START.length)
+    if (endIndex > startIndex) {
+      const content = text
+        .slice(startIndex + SLIDEV_BLOCK_START.length, endIndex)
+        .trim()
+      return content.length > 0 ? content : null
+    }
+  }
+
   const match = text.match(/```(?:markdown|md)?\s*([\s\S]*?)```/i)
   if (!match) return null
   const content = match[1].trim()
@@ -268,7 +286,7 @@ export async function POST(req: NextRequest) {
 
     const extracted = extractMarkdownBlock(responseText)
     if (extracted && hasInvalidLayoutUsage(extracted)) {
-      const repairPrompt = `请将以下内容修正为**合法 Slidev Markdown**，严格遵守：\n- 只能使用 Slidev 语法\n- layout 必须写在每页的 frontmatter 内\n- 不要使用“## cover/section”等标题表示 layout\n- 分页使用 ---\n- 保留原意与结构\n\n内容如下：\n${extracted}`
+      const repairPrompt = `请将以下内容修正为**合法 Slidev Markdown**，严格遵守：\n- 只能使用 Slidev 语法\n- layout 必须写在每页的 frontmatter 内\n- 不要使用“## cover/section”等标题表示 layout\n- 分页使用 ---\n- 保留原意与结构\n- 输出必须包裹在 ${SLIDEV_BLOCK_START} 与 ${SLIDEV_BLOCK_END} 之间\n\n内容如下：\n${extracted}`
       const repair = await callKimiAPI([
         { role: "user", content: repairPrompt },
       ], apiKey, model)

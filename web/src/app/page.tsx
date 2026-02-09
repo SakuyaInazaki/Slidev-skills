@@ -107,6 +107,8 @@ const SLIDEV_LAYOUTS = [
 
 const SLIDEV_SLIDE_KEYS = ["layout", "class", "background", "transition"]
 const SLIDEV_SLIDE_KEY_SET = new Set(SLIDEV_SLIDE_KEYS)
+const SLIDEV_BLOCK_START = "<<<SLIDEV>>>"
+const SLIDEV_BLOCK_END = "<<<END_SLIDEV>>>"
 const SLIDEV_DECK_KEYS = new Set([
   "theme",
   "title",
@@ -167,6 +169,17 @@ function scoreMarkdownContent(content: string, lang: string) {
 }
 
 function extractMarkdownFromResponse(response: string) {
+  const startIndex = response.indexOf(SLIDEV_BLOCK_START)
+  if (startIndex >= 0) {
+    const endIndex = response.indexOf(SLIDEV_BLOCK_END, startIndex + SLIDEV_BLOCK_START.length)
+    if (endIndex > startIndex) {
+      const content = response
+        .slice(startIndex + SLIDEV_BLOCK_START.length, endIndex)
+        .trim()
+      if (content.length) return content
+    }
+  }
+
   const lines = normalizeNewlines(response).split("\n")
   const candidates: { content: string; lang: string; score: number }[] = []
 
