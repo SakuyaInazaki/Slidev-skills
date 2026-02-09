@@ -217,19 +217,20 @@ export default function Home() {
         },
       ]
 
-      const response = await fetch("/api/claude", {
+      const response = await fetch("/api/kimi", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           messages: claudeMessages,
           slidevContent: output,
           originalMarkdown: input,
+          model: "moonshot-v1-8k",
         }),
       })
 
       if (!response.ok) {
         const errorData = await response.json()
-        throw new Error(errorData.error || "Failed to get response from Claude")
+        throw new Error(errorData.error || "调用 Kimi API 失败")
       }
 
       const data = await response.json()

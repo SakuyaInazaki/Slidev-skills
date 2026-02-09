@@ -28,6 +28,7 @@ model User {
   // Subscription
   subscription  Subscription?
   usageLogs     UsageLog[]
+  paymentOrders PaymentOrder[]
 
   @@map("users")
 }
@@ -127,6 +128,7 @@ model Subscription {
 
 enum ApiType {
   CLAUDE_CHAT
+  KIMI_CHAT
   IMAGE_GENERATION
 }
 
@@ -142,4 +144,40 @@ model UsageLog {
 
   @@index([userId, createdAt])
   @@map("usage_logs")
+}
+
+// ============================================================
+// PAYMENT ORDERS (for domestic payment platforms)
+// ============================================================
+
+enum PaymentMethod {
+  WECHAT
+  ALIPAY
+  MANUAL
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+model PaymentOrder {
+  id          String        @id @default(cuid())
+  userId      String
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  amount      Decimal       @db.Decimal(10, 2)
+  method      PaymentMethod
+  status      PaymentStatus @default(PENDING)
+
+  transaction String?       @unique // Third-party transaction ID
+  outTradeNo  String?       @unique // Our order ID
+
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([userId, status])
+  @@map("payment_orders")
 }
