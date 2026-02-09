@@ -83,6 +83,34 @@ Questions?
 @slidev
 `
 
+const GREETING_PATTERNS = [
+  /^hi\b/i,
+  /^hello\b/i,
+  /^hey\b/i,
+  /^yo\b/i,
+  /^你好/,
+  /^哈喽/,
+  /^嗨/,
+  /^在吗/,
+  /^喂/,
+]
+
+const INTENT_KEYWORDS = [
+  "优化", "改", "调整", "润色", "重写", "生成", "制作", "帮我", "请帮", "布局", "排版",
+  "图片", "配色", "动画", "主题", "结构", "逻辑", "拆分", "总结", "转成", "转换",
+  "slidev", "markdown", "ppt", "演示", "幻灯片",
+]
+
+function isGreetingOnly(text: string) {
+  const trimmed = text.trim()
+  if (!trimmed) return true
+  if (trimmed.length > 12) return false
+  const lowered = trimmed.toLowerCase()
+  const isGreeting = GREETING_PATTERNS.some((pattern) => pattern.test(trimmed))
+  const hasIntent = INTENT_KEYWORDS.some((keyword) => lowered.includes(keyword))
+  return isGreeting && !hasIntent
+}
+
 export default function Home() {
   const { data: session, status } = useSession()
   const [input, setInput] = useState(SAMPLE_MARKDOWN)
@@ -256,6 +284,20 @@ export default function Home() {
 
         return [...prev, newUserMessage, upgradeMessage]
       })
+      return
+    }
+
+    if (isGreetingOnly(userMessage)) {
+      setMessages(prev => [
+        ...prev,
+        newUserMessage,
+        {
+          id: (Date.now() + 1).toString(),
+          role: "assistant",
+          content: "你好！我可以帮你优化 Slidev 结构、布局和文案。请告诉我你的目标或贴一段内容，比如：\n- 帮我优化这个标题页\n- 这段内容该怎么拆成 5 页\n- 给第 3 页建议布局",
+          timestamp: new Date(),
+        },
+      ])
       return
     }
 

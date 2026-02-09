@@ -22,11 +22,11 @@ const GREETING_PATTERNS = [
   /^hello\b/i,
   /^hey\b/i,
   /^yo\b/i,
-  /^你好\b/,
-  /^哈喽\b/,
-  /^嗨\b/,
-  /^在吗\b/,
-  /^喂\b/,
+  /^你好/,
+  /^哈喽/,
+  /^嗨/,
+  /^在吗/,
+  /^喂/,
 ]
 
 const INTENT_KEYWORDS = [
@@ -42,7 +42,7 @@ function isGreetingOnly(text: string) {
   const lowered = trimmed.toLowerCase()
   const isGreeting = GREETING_PATTERNS.some((pattern) => pattern.test(trimmed))
   const hasIntent = INTENT_KEYWORDS.some((keyword) => lowered.includes(keyword))
-  return isGreeting && !hasIntent
+  return !hasIntent && isGreeting
 }
 
 const SLIDEV_LAYOUTS = [
