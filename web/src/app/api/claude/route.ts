@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { checkUsageLimit, recordUsage } from "@/lib/rate-limit"
 
-export const runtime = "edge"
+export const runtime = "nodejs"
 
 interface ClaudeMessage {
   role: "user" | "assistant"
