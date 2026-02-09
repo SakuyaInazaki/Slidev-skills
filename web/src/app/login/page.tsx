@@ -1,21 +1,15 @@
-import { signIn } from "@/auth"
+"use client"
+
+import { signIn } from "next-auth/react"
+import { useSearchParams } from "next/navigation"
 import { Github } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Presentation } from "lucide-react"
 
-export default function LoginPage(props: {
-  searchParams: Promise<{ callbackUrl?: string }>
-}) {
-  return <LoginPageContent searchParams={props.searchParams} />
-}
-
-async function LoginPageContent({
-  searchParams,
-}: {
-  searchParams: Promise<{ callbackUrl?: string }>
-}) {
-  const params = await searchParams
+export default function LoginPage() {
+  const searchParams = useSearchParams()
+  const callbackUrl = searchParams.get("callbackUrl") || "/"
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4">
@@ -31,7 +25,7 @@ async function LoginPageContent({
         </CardHeader>
         <CardContent className="space-y-4">
           <Button
-            onClick={() => signIn("github", { callbackUrl: params.callbackUrl || "/" })}
+            onClick={() => signIn("github", { callbackUrl })}
             variant="outline"
             className="w-full"
             size="lg"

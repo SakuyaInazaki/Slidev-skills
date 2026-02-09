@@ -212,7 +212,7 @@ export function ChatPanel({
                 onKeyDown={handleKeyDown}
                 placeholder={placeholder}
                 disabled={isProcessing}
-                className="flex-1 resize-none rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 min-h-[60px] max-h-[120px]"
+                className="flex-1 resize-none rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 min-h-[60px] max-h-[120px]"
               />
               <Button
                 size="icon"
