@@ -106,6 +106,31 @@ const SLIDEV_LAYOUTS = [
 ]
 
 const SLIDEV_SLIDE_KEYS = ["layout", "class", "background", "transition"]
+const SLIDEV_SLIDE_KEY_SET = new Set(SLIDEV_SLIDE_KEYS)
+const SLIDEV_DECK_KEYS = new Set([
+  "theme",
+  "title",
+  "info",
+  "author",
+  "description",
+  "keywords",
+  "transition",
+  "class",
+  "favicon",
+  "download",
+  "downloadfilename",
+  "exportfilename",
+  "colorschema",
+  "fonts",
+  "themeconfig",
+  "highlighter",
+  "linenumbers",
+  "presenter",
+  "record",
+  "defaults",
+  "canvaswidth",
+  "remote",
+])
 
 function hasExplicitIntent(text: string) {
   const trimmed = text.trim()
@@ -118,113 +143,371 @@ function shouldCallAI(text: string) {
   return hasExplicitIntent(text)
 }
 
-function extractMarkdownFromResponse(response: string) {
-  const match = response.match(/```(?:markdown|md)?\s*([\s\S]*?)```/i)
+type FencedBlock = { lang: string; content: string; fence: string }
+
+function parseKeyValue(line: string) {
+  const trimmed = line.trim()
+  if (!/^[A-Za-z]/.test(trimmed)) return null
+  const match = trimmed.match(/^([A-Za-z][\w-]*):\s*(.+)$/)
   if (!match) return null
-  const content = match[1].trim()
-  return content.length > 0 ? content : null
+  return { key: match[1], value: match[2] }
 }
 
-function extractGlobalFrontmatter(markdown: string) {
-  const match = markdown.match(/^---\n([\s\S]*?)\n---\n?/)
-  if (!match) {
-    return { frontmatter: "", content: markdown }
-  }
-  return {
-    frontmatter: match[1].trim(),
-    content: markdown.slice(match[0].length),
-  }
+function normalizeNewlines(value: string) {
+  return value.replace(/\r\n/g, "\n").replace(/\r/g, "\n")
 }
 
-function splitSlides(markdown: string) {
-  return markdown.split(/^---$/m).map((part) => part.trim()).filter(Boolean)
-}
+function extractFencedBlocks(text: string) {
+  const lines = normalizeNewlines(text).split("\n")
+  const blocks: FencedBlock[] = []
+  let inFence = false
+  let fence = ""
+  let lang = ""
+  let buffer: string[] = []
 
-function normalizeSlide(slide: string, prependKeys: string[] = []) {
-  if (!slide.trim()) return ""
+  for (const raw of lines) {
+    const trimmed = raw.trim()
+    const fenceMatch = trimmed.match(/^(```+|~~~+)(?:\s*(\S+))?\s*$/)
 
-  const lines = slide.split("\n")
-  const frontmatterKeys: string[] = [...prependKeys]
-  const contentLines: string[] = []
-  let inCode = false
-  let layoutFromHeading: string | null = null
-
-  for (let i = 0; i < lines.length; i++) {
-    const raw = lines[i]
-    const line = raw.trim()
-
-    if (line.startsWith("```")) {
-      inCode = !inCode
-      contentLines.push(raw)
+    if (!inFence && fenceMatch) {
+      inFence = true
+      fence = fenceMatch[1]
+      lang = (fenceMatch[2] || "").toLowerCase()
+      buffer = []
       continue
     }
 
-    if (!inCode && !layoutFromHeading && /^##\s+/i.test(line)) {
-      const token = line.replace(/^##\s+/i, "").trim().toLowerCase()
-      if (SLIDEV_LAYOUTS.includes(token)) {
-        layoutFromHeading = token
+    if (inFence && trimmed.startsWith(fence)) {
+      blocks.push({ lang, content: buffer.join("\n"), fence })
+      inFence = false
+      fence = ""
+      lang = ""
+      buffer = []
+      continue
+    }
+
+    if (inFence) {
+      buffer.push(raw)
+    }
+  }
+
+  if (inFence && buffer.length) {
+    blocks.push({ lang, content: buffer.join("\n"), fence })
+  }
+
+  return blocks
+}
+
+function scoreMarkdownBlock(block: FencedBlock) {
+  let score = 0
+  if (["markdown", "md", "mdx", "slidev"].includes(block.lang)) score += 3
+  if (/^---$/m.test(block.content)) score += 2
+  if (/^layout:/m.test(block.content)) score += 1
+  if (/^theme:/m.test(block.content)) score += 1
+  if (/#\s+/.test(block.content)) score += 1
+  score += Math.min(block.content.length / 500, 4)
+  return score
+}
+
+function extractMarkdownFromResponse(response: string) {
+  const blocks = extractFencedBlocks(response)
+  if (blocks.length) {
+    const sorted = [...blocks].sort((a, b) => scoreMarkdownBlock(b) - scoreMarkdownBlock(a))
+    const content = sorted[0].content.trim()
+    return content.length ? content : null
+  }
+
+  const raw = normalizeNewlines(response)
+  const lines = raw.split("\n")
+  const startIndex = lines.findIndex((line) => {
+    const trimmed = line.trim()
+    if (!trimmed) return false
+    if (trimmed === "---") return true
+    return /^theme:|^title:|^layout:/i.test(trimmed)
+  })
+
+  if (startIndex === -1) return null
+  const content = lines.slice(startIndex).join("\n").trim()
+  return content.length ? content : null
+}
+
+function extractDeckFrontmatter(markdown: string) {
+  const lines = normalizeNewlines(markdown).split("\n")
+  let idx = 0
+  while (idx < lines.length && lines[idx].trim() === "") idx++
+
+  let frontmatterLines: string[] = []
+  if (idx < lines.length && lines[idx].trim() === "---") {
+    idx++
+    while (idx < lines.length && lines[idx].trim() !== "---") {
+      frontmatterLines.push(lines[idx])
+      idx++
+    }
+    if (idx < lines.length && lines[idx].trim() === "---") {
+      idx++
+    }
+  } else {
+    let temp = idx
+    const candidate: string[] = []
+    while (temp < lines.length) {
+      const line = lines[temp]
+      if (line.trim() === "") break
+      const kv = parseKeyValue(line)
+      if (!kv) break
+      candidate.push(line)
+      temp++
+    }
+    const hasDeckKey = candidate.some((line) => {
+      const kv = parseKeyValue(line)
+      return kv ? SLIDEV_DECK_KEYS.has(kv.key.toLowerCase()) : false
+    })
+    if (candidate.length && hasDeckKey) {
+      frontmatterLines = candidate
+      idx = temp
+    }
+  }
+
+  return {
+    frontmatterLines,
+    bodyLines: lines.slice(idx),
+  }
+}
+
+function parseSlides(lines: string[]) {
+  const slides: { frontmatter: string[]; content: string[] }[] = []
+  let idx = 0
+
+  while (idx < lines.length) {
+    while (idx < lines.length && lines[idx].trim() === "") idx++
+    if (idx >= lines.length) break
+
+    let frontmatter: string[] = []
+    let content: string[] = []
+
+    if (lines[idx].trim() === "---") {
+      idx++
+      while (idx < lines.length && lines[idx].trim() !== "---") {
+        frontmatter.push(lines[idx])
+        idx++
+      }
+      if (idx < lines.length && lines[idx].trim() === "---") idx++
+    } else {
+      let temp = idx
+      const candidate: string[] = []
+      while (temp < lines.length) {
+        const line = lines[temp]
+        if (line.trim() === "") break
+        const kv = parseKeyValue(line)
+        if (!kv) break
+        candidate.push(line)
+        temp++
+      }
+
+      const hasSlideKey = candidate.some((line) => {
+        const kv = parseKeyValue(line)
+        return kv ? SLIDEV_SLIDE_KEY_SET.has(kv.key.toLowerCase()) : false
+      })
+
+      if (candidate.length && hasSlideKey) {
+        frontmatter = candidate
+        idx = temp
+        if (lines[idx]?.trim() === "---") idx++
+      }
+    }
+
+    let inCode = false
+    let fence = ""
+    while (idx < lines.length) {
+      const raw = lines[idx]
+      const trimmed = raw.trim()
+      const fenceMatch = trimmed.match(/^(```+|~~~+)/)
+      if (fenceMatch) {
+        if (!inCode) {
+          inCode = true
+          fence = fenceMatch[1]
+        } else if (trimmed.startsWith(fence)) {
+          inCode = false
+          fence = ""
+        }
+        content.push(raw)
+        idx++
         continue
+      }
+
+      if (!inCode && trimmed === "---") {
+        idx++
+        break
+      }
+
+      content.push(raw)
+      idx++
+    }
+
+    slides.push({ frontmatter, content })
+  }
+
+  return slides
+}
+
+function normalizeSlideBlock(
+  slide: { frontmatter: string[]; content: string[] },
+  prependKeys: string[] = []
+) {
+  const known: Record<string, string> = {}
+  const others: string[] = []
+
+  const pushKnown = (key: string, value: string) => {
+    if (!value) return
+    known[key] = value
+  }
+
+  slide.frontmatter.forEach((line) => {
+    const kv = parseKeyValue(line)
+    if (!kv) {
+      if (line.trim()) others.push(line.trim())
+      return
+    }
+    const key = kv.key.toLowerCase()
+    const value = kv.value.trim()
+    if (SLIDEV_SLIDE_KEY_SET.has(key)) {
+      pushKnown(key, value)
+    } else if (value) {
+      others.push(`${kv.key}: ${value}`)
+    }
+  })
+
+  prependKeys.forEach((line) => {
+    const kv = parseKeyValue(line)
+    if (!kv) return
+    const key = kv.key.toLowerCase()
+    if (!known[key]) {
+      pushKnown(key, kv.value.trim())
+    }
+  })
+
+  const content: string[] = []
+  let inCode = false
+  let fence = ""
+  let layoutFromHeading: string | null = null
+  let sawRightColumn = false
+  let sawLeftColumn = false
+  let sawColumns = false
+  let sawNonEmpty = false
+
+  slide.content.forEach((raw) => {
+    const trimmed = raw.trim()
+    const fenceMatch = trimmed.match(/^(```+|~~~+)/)
+    if (fenceMatch) {
+      if (!inCode) {
+        inCode = true
+        fence = fenceMatch[1]
+      } else if (trimmed.startsWith(fence)) {
+        inCode = false
+        fence = ""
+      }
+      content.push(raw)
+      return
+    }
+
+    if (!inCode && /^#{1,3}\s+/i.test(trimmed) && !sawNonEmpty) {
+      const token = trimmed.replace(/^#{1,3}\s+/i, "").trim().toLowerCase()
+      if (SLIDEV_LAYOUTS.includes(token) && !layoutFromHeading) {
+        layoutFromHeading = token
+        return
       }
     }
 
     if (!inCode) {
-      const keyMatch = line.match(/^([\w-]+):\s*(.+)$/)
-      if (keyMatch) {
-        const key = keyMatch[1].toLowerCase()
-        if (SLIDEV_SLIDE_KEYS.includes(key)) {
-          frontmatterKeys.push(`${keyMatch[1]}: ${keyMatch[2]}`)
-          continue
+      const kv = parseKeyValue(trimmed)
+      if (kv && SLIDEV_SLIDE_KEY_SET.has(kv.key.toLowerCase())) {
+        if (!known[kv.key.toLowerCase()]) {
+          pushKnown(kv.key.toLowerCase(), kv.value.trim())
         }
+        return
       }
     }
 
-    contentLines.push(raw)
+    if (trimmed === "::right::") {
+      sawRightColumn = true
+    }
+
+    if (trimmed === "::left::") {
+      sawLeftColumn = true
+    }
+
+    if (trimmed === "::cols::") {
+      sawColumns = true
+    }
+
+    if (trimmed) {
+      sawNonEmpty = true
+    }
+
+    content.push(raw)
+  })
+
+  if (layoutFromHeading && !known.layout) {
+    pushKnown("layout", layoutFromHeading)
   }
 
-  if (layoutFromHeading) {
-    frontmatterKeys.unshift(`layout: ${layoutFromHeading}`)
+  if ((sawRightColumn || sawLeftColumn || sawColumns) && !known.layout) {
+    pushKnown("layout", "two-cols")
   }
 
-  const content = contentLines.join("\n").trim()
-
-  if (frontmatterKeys.length === 0) {
-    return content
+  if (inCode) {
+    content.push(fence || "```")
   }
 
-  const fm = frontmatterKeys.join("\n")
-  return `---\n${fm}\n---\n${content}`.trim()
+  const contentText = content.join("\n").trim()
+  const frontmatterLinesOut = [
+    ...others,
+    ...SLIDEV_SLIDE_KEYS.filter((key) => known[key]).map((key) => `${key}: ${known[key]}`),
+  ]
+
+  if (!frontmatterLinesOut.length) {
+    return contentText
+  }
+
+  if (!contentText) {
+    return `---\n${frontmatterLinesOut.join("\n")}\n---`
+  }
+
+  return `---\n${frontmatterLinesOut.join("\n")}\n---\n${contentText}`.trim()
 }
 
 function normalizeSlidevMarkdown(markdown: string) {
-  if (!markdown.trim()) return markdown
+  const trimmed = markdown.trim()
+  if (!trimmed) return markdown
 
-  const { frontmatter, content } = extractGlobalFrontmatter(markdown)
-  const fmLines = frontmatter ? frontmatter.split("\n").map((l) => l.trim()).filter(Boolean) : []
+  const { frontmatterLines, bodyLines } = extractDeckFrontmatter(markdown)
   const deckLines: string[] = []
   const slideKeys: string[] = []
 
-  fmLines.forEach((line) => {
-    const keyMatch = line.match(/^([\w-]+):\s*(.+)$/)
-    if (!keyMatch) {
-      deckLines.push(line)
+  frontmatterLines.forEach((line) => {
+    const kv = parseKeyValue(line)
+    if (!kv) {
+      if (line.trim()) deckLines.push(line.trim())
       return
     }
-
-    const key = keyMatch[1].toLowerCase()
-    if (SLIDEV_SLIDE_KEYS.includes(key)) {
-      slideKeys.push(`${keyMatch[1]}: ${keyMatch[2]}`)
+    const key = kv.key.toLowerCase()
+    if (SLIDEV_SLIDE_KEY_SET.has(key)) {
+      slideKeys.push(`${kv.key}: ${kv.value.trim()}`)
     } else {
-      deckLines.push(line)
+      deckLines.push(`${kv.key}: ${kv.value.trim()}`)
     }
   })
 
-  const slides = splitSlides(content || markdown).map((slide, index) =>
-    normalizeSlide(slide, index === 0 ? slideKeys : [])
-  )
+  const slides = parseSlides(bodyLines)
+    .map((slide, index) => normalizeSlideBlock(slide, index === 0 ? slideKeys : []))
+    .filter((slide) => slide.trim() !== "")
 
-  const joined = slides.filter(Boolean).join("\n\n---\n\n")
+  const joined = slides.join("\n\n---\n\n").trim()
   if (!deckLines.length) {
-    return joined.trim()
+    return joined
+  }
+
+  if (!joined) {
+    return `---\n${deckLines.join("\n")}\n---`
   }
 
   return `---\n${deckLines.join("\n")}\n---\n${joined}`.trim()
