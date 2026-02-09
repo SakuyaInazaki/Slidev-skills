@@ -71,7 +71,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// Cancel subscription
+// Cancel subscription (domestic payment - manual update)
 export async function POST(req: NextRequest) {
   const session = await auth()
 
@@ -96,25 +96,15 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    if (!subscription.stripeSubscriptionId) {
-      return NextResponse.json(
-        { error: "No active subscription to cancel" },
-        { status: 400 }
-      )
-    }
-
-    // Cancel at period end via Stripe
-    const { cancelSubscription } = await import("@/lib/stripe")
-    await cancelSubscription(subscription.stripeSubscriptionId)
-
-    // Update database
+    // For domestic payment, we just mark cancelAtPeriodEnd
+    // User won't be charged again when period ends
     const updated = await prisma.subscription.update({
       where: { userId },
       data: { cancelAtPeriodEnd: true },
     })
 
     return NextResponse.json({
-      message: "Subscription will be canceled at period end",
+      message: "订阅将在当前计费周期结束后取消",
       cancelAtPeriodEnd: updated.cancelAtPeriodEnd,
       currentPeriodEnd: updated.currentPeriodEnd,
     })
