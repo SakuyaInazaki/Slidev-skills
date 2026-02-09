@@ -54,7 +54,7 @@ export default function AccountPage() {
 
       if (res.ok) {
         const data = await res.json()
-        setSubscription(prev => ({ ...prev, cancelAtPeriodEnd: true }))
+        setSubscription((prev: any) => ({ ...prev, cancelAtPeriodEnd: true }))
         alert(data.message || "订阅已标记为取消")
       }
     } catch (error) {
