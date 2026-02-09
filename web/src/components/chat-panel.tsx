@@ -150,29 +150,31 @@ export function ChatPanel({
                     } flex flex-col`}
                   >
                     <div
-                      className={`rounded-lg px-3 py-2 max-w-[85%] text-sm ${
+                      className={`rounded-lg px-3 py-2 max-w-[100%] text-sm ${
                         message.role === "user"
                           ? "bg-primary text-primary-foreground"
                           : "bg-muted"
                       }`}
                     >
-                      <p className="whitespace-pre-wrap break-words">{message.content}</p>
-                    </div>
-                    {message.actions && message.actions.length > 0 && (
-                      <div className="flex flex-wrap gap-2 mt-1">
-                        {message.actions.map((action, idx) => (
-                          <Button
-                            key={idx}
-                            size="sm"
-                            variant={action.variant || "outline"}
-                            className="h-7 text-xs"
-                            onClick={action.action}
-                          >
-                            {action.label}
-                          </Button>
-                        ))}
+                      <div className="prose prose-sm dark:prose-invert max-w-none">
+                        <p className="whitespace-pre-wrap break-words">{message.content}</p>
                       </div>
-                    )}
+                      {message.actions && message.actions.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mt-3">
+                          {message.actions.map((action, idx) => (
+                            <Button
+                              key={idx}
+                              size="sm"
+                              variant={action.variant || "outline"}
+                              className="h-8 text-xs"
+                              onClick={action.action}
+                            >
+                              {action.label}
+                            </Button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                     <span className="text-xs text-muted-foreground">
                       {message.timestamp.toLocaleTimeString([], {
                         hour: "2-digit",

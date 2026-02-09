@@ -7,6 +7,26 @@ const config: Config = {
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
+  typography: (defaultTheme: any) => ({
+    ...defaultTheme,
+    DEFAULT: {
+      css: {
+        maxWidth: 'none',
+        color: 'inherit',
+        a: {
+          color: 'inherit',
+          textDecoration: 'underline',
+          '&:hover': {
+            color: 'hsl(var(--primary))',
+          },
+        },
+        strong: {
+          color: 'inherit',
+          fontWeight: '600',
+        },
+      },
+    },
+  }),
   theme: {
     extend: {
       colors: {
@@ -47,7 +67,7 @@ const config: Config = {
       },
     },
   },
-  plugins: [],
+  plugins: [require("@tailwindcss/typography")],
 }
 
 export default config

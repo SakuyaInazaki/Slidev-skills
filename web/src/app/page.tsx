@@ -93,13 +93,8 @@ export default function Home() {
   const [darkMode, setDarkMode] = useState(false)
   const [stats, setStats] = useState({ totalSlides: 0, hasCode: false, hasImages: false, hasDiagrams: false })
 
-  // AI Features
-  const [messages, setMessages] = useState<Message[]>([{
-    id: "welcome",
-    role: "assistant",
-    content: "Hi! I'm your Slidev assistant.\n\nWith the **Free plan**, you can convert Markdown to Slidev and preview your slides.\n\nUpgrade to **Pro** to unlock AI features:\n• Layout optimization\n• Image generation\n• Chat assistance\n\n[Upgrade to Pro](/pricing)",
-    timestamp: new Date(),
-  }])
+  // AI Features - 初始化消息为空数组，后续根据订阅状态动态设置
+  const [messages, setMessages] = useState<Message[]>([])
   const [isProcessing, setIsProcessing] = useState(false)
 
   // Subscription state - fetched from API
@@ -124,6 +119,33 @@ export default function Home() {
               planType: data.planType,
               status: data.status,
             })
+
+            // 根据订阅状态设置欢迎消息
+            if (data.hasAiAccess) {
+              setMessages([{
+                id: "welcome",
+                role: "assistant",
+                content: "Hi! I'm your Slidev assistant. 👋\n\nYou have **Pro access**! I can help you with:\n• Optimizing slide layouts\n• Generating images for your slides\n• Improving content and design\n\nWhat would you like help with?",
+                timestamp: new Date(),
+                actions: [{
+                  label: "Manage Subscription",
+                  action: () => window.location.href = "/account",
+                  variant: "outline",
+                }],
+              }])
+            } else {
+              setMessages([{
+                id: "welcome",
+                role: "assistant",
+                content: "Hi! I'm your Slidev assistant. 👋\n\nWith the **Free plan**, you can convert Markdown to Slidev and preview your slides.\n\nUpgrade to **Pro** to unlock AI features:\n• Layout optimization\n• Image generation\n• Chat assistance",
+                timestamp: new Date(),
+                actions: [{
+                  label: "Upgrade to Pro",
+                  action: () => window.location.href = "/pricing",
+                  variant: "default",
+                }],
+              }])
+            }
           }
         } catch (error) {
           console.error("Failed to fetch subscription:", error)
@@ -132,6 +154,18 @@ export default function Home() {
         }
       } else {
         setSubscription(null)
+        // 未登录用户
+        setMessages([{
+          id: "welcome",
+          role: "assistant",
+          content: "Hi! I'm your Slidev assistant. 👋\n\n**Sign in** to get started:\n• Convert Markdown to Slidev\n• Preview your slides in real-time\n• Download as .md file\n\n**Pro users** also get:\n• AI-powered layout optimization\n• AI image generation\n• Chat assistance",
+          timestamp: new Date(),
+          actions: [{
+            label: "Sign In",
+            action: () => window.location.href = "/login",
+            variant: "default",
+          }],
+        }])
       }
     }
 
@@ -333,6 +367,17 @@ export default function Home() {
 
                   {/* User Menu */}
                   <div className="flex items-center gap-2 pl-2 border-l">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      asChild
+                      title="Account Settings"
+                    >
+                      <a href="/account">
+                        <User className="h-4 w-4 mr-1" />
+                        <span className="hidden sm:inline">Account</span>
+                      </a>
+                    </Button>
                     {session.user.image && (
                       <img
                         src={session.user.image}
