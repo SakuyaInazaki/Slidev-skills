@@ -1,10 +1,18 @@
 import { prisma } from "@/lib/prisma"
 
+const FORCE_PRO = process.env.FORCE_PRO === "true"
+const DEFAULT_PRO_TOKENS = Number(process.env.PRO_MONTHLY_TOKENS || "10000000")
+const DEFAULT_PRO_IMAGES = Number(process.env.PRO_MONTHLY_IMAGES || "1000")
+
 /**
  * Check if user can use AI feature based on their subscription plan
  * Returns { allowed: boolean, reason?: string }
  */
 export async function checkUsageLimit(userId: string, feature: "chat" | "image") {
+  if (FORCE_PRO) {
+    return { allowed: true }
+  }
+
   const subscription = await prisma.subscription.findUnique({
     where: { userId },
   })
@@ -21,7 +29,8 @@ export async function checkUsageLimit(userId: string, feature: "chat" | "image")
   // Pro users: check their monthly quota
   if (feature === "chat") {
     // Check token usage
-    if (subscription.tokensUsed >= subscription.monthlyTokens) {
+    const monthlyTokens = subscription.monthlyTokens || DEFAULT_PRO_TOKENS
+    if (subscription.tokensUsed >= monthlyTokens) {
       return {
         allowed: false,
         reason: "Monthly token limit reached. Please upgrade or wait for next billing cycle.",
@@ -29,7 +38,8 @@ export async function checkUsageLimit(userId: string, feature: "chat" | "image")
     }
   } else if (feature === "image") {
     // Check image generation count
-    if (subscription.imagesGenerated >= subscription.imagesAllowed) {
+    const imagesAllowed = subscription.imagesAllowed || DEFAULT_PRO_IMAGES
+    if (subscription.imagesGenerated >= imagesAllowed) {
       return {
         allowed: false,
         reason: "Monthly image generation limit reached. Please upgrade or wait for next billing cycle.",

@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 
+const FORCE_PRO = process.env.FORCE_PRO === "true"
+const DEFAULT_PRO_TOKENS = Number(process.env.PRO_MONTHLY_TOKENS || "10000000")
+const DEFAULT_PRO_IMAGES = Number(process.env.PRO_MONTHLY_IMAGES || "1000")
+
 export async function GET(req: NextRequest) {
   const session = await auth()
 
@@ -28,10 +32,24 @@ export async function GET(req: NextRequest) {
           planType: "PRO",
           status: "TRIALING",
           hasAiAccess: true,
-          monthlyTokens: 10_000_000,
-          imagesAllowed: 1000,
+          monthlyTokens: DEFAULT_PRO_TOKENS,
+          imagesAllowed: DEFAULT_PRO_IMAGES,
           trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 14 day trial
           currentPeriodStart: new Date(),
+        },
+      })
+    }
+
+    // Testing mode: force Pro for all users
+    if (FORCE_PRO && (subscription.planType !== "PRO" || !subscription.hasAiAccess)) {
+      subscription = await prisma.subscription.update({
+        where: { userId },
+        data: {
+          planType: "PRO",
+          status: subscription.status === "TRIALING" ? "TRIALING" : "ACTIVE",
+          hasAiAccess: true,
+          monthlyTokens: DEFAULT_PRO_TOKENS,
+          imagesAllowed: DEFAULT_PRO_IMAGES,
         },
       })
     }
@@ -43,10 +61,25 @@ export async function GET(req: NextRequest) {
         data: {
           planType: "PRO",
           hasAiAccess: true,
-          monthlyTokens: subscription.monthlyTokens || 10_000_000,
-          imagesAllowed: subscription.imagesAllowed || 1000,
+          monthlyTokens: subscription.monthlyTokens || DEFAULT_PRO_TOKENS,
+          imagesAllowed: subscription.imagesAllowed || DEFAULT_PRO_IMAGES,
         },
       })
+    }
+
+    // Ensure Pro users always have default quota set
+    if (subscription.planType === "PRO") {
+      const needsTokenQuota = !subscription.monthlyTokens || subscription.monthlyTokens <= 0
+      const needsImageQuota = !subscription.imagesAllowed || subscription.imagesAllowed <= 0
+      if (needsTokenQuota || needsImageQuota) {
+        subscription = await prisma.subscription.update({
+          where: { userId },
+          data: {
+            monthlyTokens: needsTokenQuota ? DEFAULT_PRO_TOKENS : subscription.monthlyTokens,
+            imagesAllowed: needsImageQuota ? DEFAULT_PRO_IMAGES : subscription.imagesAllowed,
+          },
+        })
+      }
     }
 
     // Check if trial has expired

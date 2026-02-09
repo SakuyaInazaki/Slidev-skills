@@ -20,6 +20,7 @@ model User {
   email         String?   @unique
   emailVerified DateTime? @map("emailverified")
   image         String?
+  passwordHash  String?   @map("passwordhash")
   accounts      Account[]
   sessions      Session[]
   createdAt     DateTime  @default(now()) @map("createdat")
