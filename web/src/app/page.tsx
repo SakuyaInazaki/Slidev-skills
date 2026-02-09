@@ -129,7 +129,11 @@ export default function Home() {
                 timestamp: new Date(),
                 actions: [{
                   label: "Manage Subscription",
-                  action: () => window.location.href = "/account",
+                  action: () => {
+                    if (typeof window !== "undefined") {
+                      window.location.href = "/account"
+                    }
+                  },
                   variant: "outline",
                 }],
               }])
@@ -141,7 +145,11 @@ export default function Home() {
                 timestamp: new Date(),
                 actions: [{
                   label: "Upgrade to Pro",
-                  action: () => window.location.href = "/pricing",
+                  action: () => {
+                    if (typeof window !== "undefined") {
+                      window.location.href = "/pricing"
+                    }
+                  },
                   variant: "default",
                 }],
               }])
@@ -162,7 +170,11 @@ export default function Home() {
           timestamp: new Date(),
           actions: [{
             label: "Sign In",
-            action: () => window.location.href = "/login",
+            action: () => {
+              if (typeof window !== "undefined") {
+                window.location.href = "/login"
+              }
+            },
             variant: "default",
           }],
         }])
