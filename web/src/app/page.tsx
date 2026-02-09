@@ -615,6 +615,134 @@ function validateSlidevMarkdown(markdown: string) {
   return { ok: errors.length === 0, errors }
 }
 
+function sanitizeToSingleSlide(markdown: string) {
+  const { frontmatterLines, bodyLines } = extractDeckFrontmatter(markdown)
+  const deckLines: string[] = []
+
+  frontmatterLines.forEach((line) => {
+    const kv = parseKeyValue(line)
+    if (!kv) return
+    if (SLIDEV_DECK_KEYS.has(kv.key.toLowerCase())) {
+      deckLines.push(`${kv.key}: ${kv.value.trim()}`)
+    }
+  })
+
+  const slides = parseSlides(bodyLines)
+  const contentLines: string[] = []
+  slides.forEach((slide, index) => {
+    if (index > 0) contentLines.push("")
+    contentLines.push(...slide.content)
+  })
+
+  const sanitized: string[] = []
+  let inCode = false
+  let fence = ""
+  let sawNonEmpty = false
+
+  for (const raw of contentLines) {
+    const trimmed = raw.trim()
+    const fenceMatch = trimmed.match(/^(```+|~~~+)/)
+    if (fenceMatch) {
+      if (!inCode) {
+        inCode = true
+        fence = fenceMatch[1]
+      } else if (trimmed.startsWith(fence)) {
+        inCode = false
+        fence = ""
+      }
+      sanitized.push(raw)
+      continue
+    }
+
+    if (inCode) {
+      sanitized.push(raw)
+      continue
+    }
+
+    if (!trimmed) {
+      sanitized.push(raw)
+      continue
+    }
+
+    if (!sawNonEmpty) {
+      const headingMatch = trimmed.match(/^#{1,3}\s+(.+)$/)
+      if (headingMatch) {
+        const token = headingMatch[1].trim().toLowerCase()
+        if (SLIDEV_LAYOUTS.includes(token)) {
+          sanitized.push(`## ${token.toUpperCase()} SLIDE`)
+          sawNonEmpty = true
+          continue
+        }
+      }
+    }
+
+    const kv = parseKeyValue(trimmed)
+    if (kv && SLIDEV_SLIDE_KEY_SET.has(kv.key.toLowerCase())) {
+      sanitized.push(`- ${trimmed}`)
+      sawNonEmpty = true
+      continue
+    }
+
+    if (trimmed === "::right::") {
+      sanitized.push("**Right column**")
+      sawNonEmpty = true
+      continue
+    }
+
+    if (trimmed === "::left::") {
+      sanitized.push("**Left column**")
+      sawNonEmpty = true
+      continue
+    }
+
+    if (trimmed === "::cols::") {
+      sanitized.push("**Columns**")
+      sawNonEmpty = true
+      continue
+    }
+
+    if (trimmed === "---") {
+      sanitized.push("----")
+      sawNonEmpty = true
+      continue
+    }
+
+    sanitized.push(raw)
+    sawNonEmpty = true
+  }
+
+  if (inCode) {
+    sanitized.push(fence || "```")
+  }
+
+  let content = sanitized.join("\n").trim()
+  if (!content) {
+    content = "# Slide"
+  }
+
+  if (!deckLines.length) {
+    return content
+  }
+
+  return `---\n${deckLines.join("\n")}\n---\n${content}`.trim()
+}
+
+function strictSlidevProcessor(markdown: string) {
+  const normalized = normalizeSlidevMarkdown(markdown)
+  const validation = validateSlidevMarkdown(normalized)
+  if (validation.ok) {
+    return { text: normalized, fixed: false, errors: [] as string[] }
+  }
+
+  const fallback = sanitizeToSingleSlide(normalized)
+  const fallbackValidation = validateSlidevMarkdown(fallback)
+  if (fallbackValidation.ok) {
+    return { text: fallback, fixed: true, errors: validation.errors }
+  }
+
+  return { text: normalized, fixed: true, errors: validation.errors.concat(fallbackValidation.errors) }
+}
+
 export default function Home() {
   const { data: session, status } = useSession()
   const [input, setInput] = useState(SAMPLE_MARKDOWN)
@@ -842,16 +970,14 @@ export default function Home() {
       const previousOutput = output
       let applied = false
       let validationErrors: string[] = []
+      let usedFallback = false
 
       if (extracted) {
-        const normalized = normalizeSlidevMarkdown(extracted)
-        const validation = validateSlidevMarkdown(normalized)
-        if (validation.ok) {
-          setOutput(normalized)
-          applied = true
-        } else {
-          validationErrors = validation.errors
-        }
+        const processed = strictSlidevProcessor(extracted)
+        setOutput(processed.text)
+        applied = true
+        usedFallback = processed.fixed
+        validationErrors = processed.errors
       }
 
       const assistantMessage: Message = {
@@ -870,10 +996,13 @@ export default function Home() {
       setMessages(prev => {
         const next = [...prev, assistantMessage]
         if (validationErrors.length) {
+          const hint = usedFallback
+            ? "原始输出不合规，已由格式处理器自动修正并应用。"
+            : "格式校验失败，未应用到输出。"
           next.push({
             id: (Date.now() + 2).toString(),
             role: "assistant",
-            content: `格式校验失败，未应用到输出：\n${validationErrors.map((err) => `- ${err}`).join("\n")}\n\n请让 AI 重新输出**合法 Slidev Markdown**，或补充你的具体要求。`,
+            content: `${hint}\n${validationErrors.map((err) => `- ${err}`).join("\n")}\n\n请补充更明确的需求或让 AI 重新输出**合法 Slidev Markdown**。`,
             timestamp: new Date(),
           })
         }
