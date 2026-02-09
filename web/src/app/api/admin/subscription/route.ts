@@ -68,9 +68,9 @@ export async function POST(req: NextRequest) {
     data.imagesGenerated = 0
   }
 
-  if (isNumber(body.setPeriodMonths) && body.setPeriodMonths > 0) {
+  if (isNumber(body.setPeriodMonths) && (body.setPeriodMonths ?? 0) > 0) {
     const now = new Date()
-    const periodEnd = new Date(Date.now() + body.setPeriodMonths * 30 * 24 * 60 * 60 * 1000)
+    const periodEnd = new Date(Date.now() + (body.setPeriodMonths ?? 0) * 30 * 24 * 60 * 60 * 1000)
     data.currentPeriodStart = now
     data.currentPeriodEnd = periodEnd
   }
