@@ -101,9 +101,41 @@ export default function Home() {
   }])
   const [isProcessing, setIsProcessing] = useState(false)
 
-  // Subscription state (would be fetched from API)
-  // null = not logged in, { hasAiAccess: false } = Free, { hasAiAccess: true } = Pro
-  const [subscription, setSubscription] = useState<{ hasAiAccess: boolean } | null>(null)
+  // Subscription state - fetched from API
+  const [subscription, setSubscription] = useState<{
+    hasAiAccess: boolean
+    planType: string
+    status: string
+  } | null>(null)
+  const [subscriptionLoading, setSubscriptionLoading] = useState(false)
+
+  // Fetch subscription when session changes
+  useEffect(() => {
+    const fetchSubscription = async () => {
+      if (session?.user) {
+        setSubscriptionLoading(true)
+        try {
+          const res = await fetch("/api/subscription")
+          if (res.ok) {
+            const data = await res.json()
+            setSubscription({
+              hasAiAccess: data.hasAiAccess,
+              planType: data.planType,
+              status: data.status,
+            })
+          }
+        } catch (error) {
+          console.error("Failed to fetch subscription:", error)
+        } finally {
+          setSubscriptionLoading(false)
+        }
+      } else {
+        setSubscription(null)
+      }
+    }
+
+    fetchSubscription()
+  }, [session])
 
   // View state
   const [showPreview, setShowPreview] = useState(true)

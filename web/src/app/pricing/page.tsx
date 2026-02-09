@@ -1,7 +1,12 @@
+"use client"
+
+import { useState, Suspense } from "react"
+import { useSession, signIn } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Check, Crown, Sparkles, Zap, Github, ExternalLink } from "lucide-react"
+import { Check, Crown, Sparkles, Github, ExternalLink, Loader2 } from "lucide-react"
 import Link from "next/link"
+import { useSearchParams } from "next/navigation"
 
 const plans = [
   {
@@ -38,29 +43,85 @@ const plans = [
       "Early access to new features",
     ],
     cta: "Upgrade to Pro",
-    ctaLink: "#", // TODO: Add Stripe checkout
+    pro: true,
   },
 ]
 
-export default function PricingPage() {
+function PricingContent() {
+  const { data: session } = useSession()
+  const [loading, setLoading] = useState(false)
+  const searchParams = useSearchParams()
+  const success = searchParams.get("success")
+  const canceled = searchParams.get("canceled")
+
+  const handleSubscribe = async () => {
+    if (!session?.user) {
+      signIn()
+      return
+    }
+
+    setLoading(true)
+    try {
+      const res = await fetch("/api/checkout", {
+        method: "POST",
+      })
+
+      if (!res.ok) {
+        const error = await res.json()
+        throw new Error(error.error || "Failed to create checkout session")
+      }
+
+      const { url } = await res.json()
+      if (url) {
+        window.location.href = url
+      }
+    } catch (error) {
+      console.error("Checkout error:", error)
+      alert(error instanceof Error ? error.message : "Failed to proceed to checkout")
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <div className="min-h-screen">
       {/* Header */}
       <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" asChild>
-              <Link href="/">
-                <Github className="h-5 w-5" />
-              </Link>
-            </Button>
-            <div>
-              <h1 className="text-xl font-bold">Pricing</h1>
-              <p className="text-sm text-muted-foreground">Choose your plan</p>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Button variant="ghost" size="icon" asChild>
+                <Link href="/">
+                  <Github className="h-5 w-5" />
+                </Link>
+              </Button>
+              <div>
+                <h1 className="text-xl font-bold">Pricing</h1>
+                <p className="text-sm text-muted-foreground">Choose your plan</p>
+              </div>
             </div>
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/">Back to App</Link>
+            </Button>
           </div>
         </div>
       </header>
+
+      {/* Success/Error Messages */}
+      {success === "true" && (
+        <div className="container mx-auto px-4 py-4">
+          <div className="bg-green-100 dark:bg-green-900 border border-green-400 text-green-700 dark:text-green-200 px-4 py-3 rounded">
+            Payment successful! Your Pro subscription is now active.
+          </div>
+        </div>
+      )}
+      {canceled === "true" && (
+        <div className="container mx-auto px-4 py-4">
+          <div className="bg-yellow-100 dark:bg-yellow-900 border border-yellow-400 text-yellow-700 dark:text-yellow-200 px-4 py-3 rounded">
+            Payment canceled. You can upgrade anytime from the app.
+          </div>
+        </div>
+      )}
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-12">
@@ -116,17 +177,39 @@ export default function PricingPage() {
                     </li>
                   ))}
                 </ul>
-                <Button
-                  className="w-full"
-                  size="lg"
-                  variant={plan.popular ? "default" : "outline"}
-                  asChild
-                >
-                  <Link href={plan.ctaLink}>
-                    {plan.cta}
-                    <ExternalLink className="ml-2 h-4 w-4" />
-                  </Link>
-                </Button>
+                {plan.pro ? (
+                  <Button
+                    className="w-full"
+                    size="lg"
+                    variant={plan.popular ? "default" : "outline"}
+                    onClick={handleSubscribe}
+                    disabled={loading}
+                  >
+                    {loading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        {plan.cta}
+                        <ExternalLink className="ml-2 h-4 w-4" />
+                      </>
+                    )}
+                  </Button>
+                ) : (
+                  <Button
+                    className="w-full"
+                    size="lg"
+                    variant={plan.popular ? "default" : "outline"}
+                    asChild
+                  >
+                    <Link href={plan.ctaLink || "/"}>
+                      {plan.cta}
+                      <ExternalLink className="ml-2 h-4 w-4" />
+                    </Link>
+                  </Button>
+                )}
               </CardContent>
             </Card>
           ))}
@@ -159,12 +242,12 @@ export default function PricingPage() {
             </Card>
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">How are AI features calculated?</CardTitle>
+                <CardTitle className="text-lg">What AI features are included?</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-muted-foreground">
-                  We use your own API keys for Claude and image generation. As a Pro subscriber, you get unlimited access
-                  to these features. We continuously optimize our AI usage to provide the best experience.
+                  Pro subscribers get AI-powered layout optimization to make slides look professional, AI image generation
+                  to add visuals to presentations, and chat assistance to help with content creation and editing.
                 </p>
               </CardContent>
             </Card>
@@ -190,5 +273,17 @@ export default function PricingPage() {
         </div>
       </footer>
     </div>
+  )
+}
+
+export default function PricingPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-muted-foreground">Loading...</div>
+      </div>
+    }>
+      <PricingContent />
+    </Suspense>
   )
 }

@@ -95,19 +95,25 @@ model Subscription {
   planType          PlanType            @default(FREE)
   status            SubscriptionStatus  @default(TRIALING)
 
-  // Quotas (per month) - Pro users get AI access
-  // FREE: No AI features
-  // PRO: Unlimited AI (you manage costs server-side)
-  hasAiAccess       Boolean             @default(false)
-
-  // Usage tracking (for your analytics)
-  claudeCallsUsed   Int                 @default(0)
+  // AI Quota (fixed monthly amount for Pro users)
+  // You buy API keys with a fixed monthly budget
+  monthlyTokens     Int                 @default(0)    // e.g., 50K or 100K tokens per month
+  tokensUsed        Int                 @default(0)
+  imagesAllowed     Int                 @default(0)    // e.g., 50 images per month
   imagesGenerated   Int                 @default(0)
+
+  // Derived helper
+  hasAiAccess       Boolean             @default(false)
 
   // Dates
   trialEndsAt       DateTime?
+  currentPeriodStart DateTime?
   currentPeriodEnd  DateTime?
   cancelAtPeriodEnd Boolean             @default(false)
+
+  // Stripe
+  stripeCustomerId      String?         @unique
+  stripeSubscriptionId  String?         @unique
 
   createdAt         DateTime            @default(now())
   updatedAt         DateTime            @updatedAt
