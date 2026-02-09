@@ -90,6 +90,23 @@ const INTENT_KEYWORDS = [
   "optimize", "improve", "rewrite", "generate", "design", "layout",
 ]
 
+const SLIDEV_LAYOUTS = [
+  "cover",
+  "center",
+  "default",
+  "intro",
+  "section",
+  "two-cols",
+  "image-right",
+  "image-left",
+  "image",
+  "statement",
+  "quote",
+  "iframe",
+]
+
+const SLIDEV_SLIDE_KEYS = ["layout", "class", "background", "transition"]
+
 function hasExplicitIntent(text: string) {
   const trimmed = text.trim()
   if (!trimmed) return false
@@ -106,6 +123,111 @@ function extractMarkdownFromResponse(response: string) {
   if (!match) return null
   const content = match[1].trim()
   return content.length > 0 ? content : null
+}
+
+function extractGlobalFrontmatter(markdown: string) {
+  const match = markdown.match(/^---\n([\s\S]*?)\n---\n?/)
+  if (!match) {
+    return { frontmatter: "", content: markdown }
+  }
+  return {
+    frontmatter: match[1].trim(),
+    content: markdown.slice(match[0].length),
+  }
+}
+
+function splitSlides(markdown: string) {
+  return markdown.split(/^---$/m).map((part) => part.trim()).filter(Boolean)
+}
+
+function normalizeSlide(slide: string, prependKeys: string[] = []) {
+  if (!slide.trim()) return ""
+
+  const lines = slide.split("\n")
+  const frontmatterKeys: string[] = [...prependKeys]
+  const contentLines: string[] = []
+  let inCode = false
+  let layoutFromHeading: string | null = null
+
+  for (let i = 0; i < lines.length; i++) {
+    const raw = lines[i]
+    const line = raw.trim()
+
+    if (line.startsWith("```")) {
+      inCode = !inCode
+      contentLines.push(raw)
+      continue
+    }
+
+    if (!inCode && !layoutFromHeading && /^##\s+/i.test(line)) {
+      const token = line.replace(/^##\s+/i, "").trim().toLowerCase()
+      if (SLIDEV_LAYOUTS.includes(token)) {
+        layoutFromHeading = token
+        continue
+      }
+    }
+
+    if (!inCode) {
+      const keyMatch = line.match(/^([\w-]+):\s*(.+)$/)
+      if (keyMatch) {
+        const key = keyMatch[1].toLowerCase()
+        if (SLIDEV_SLIDE_KEYS.includes(key)) {
+          frontmatterKeys.push(`${keyMatch[1]}: ${keyMatch[2]}`)
+          continue
+        }
+      }
+    }
+
+    contentLines.push(raw)
+  }
+
+  if (layoutFromHeading) {
+    frontmatterKeys.unshift(`layout: ${layoutFromHeading}`)
+  }
+
+  const content = contentLines.join("\n").trim()
+
+  if (frontmatterKeys.length === 0) {
+    return content
+  }
+
+  const fm = frontmatterKeys.join("\n")
+  return `---\n${fm}\n---\n${content}`.trim()
+}
+
+function normalizeSlidevMarkdown(markdown: string) {
+  if (!markdown.trim()) return markdown
+
+  const { frontmatter, content } = extractGlobalFrontmatter(markdown)
+  const fmLines = frontmatter ? frontmatter.split("\n").map((l) => l.trim()).filter(Boolean) : []
+  const deckLines: string[] = []
+  const slideKeys: string[] = []
+
+  fmLines.forEach((line) => {
+    const keyMatch = line.match(/^([\w-]+):\s*(.+)$/)
+    if (!keyMatch) {
+      deckLines.push(line)
+      return
+    }
+
+    const key = keyMatch[1].toLowerCase()
+    if (SLIDEV_SLIDE_KEYS.includes(key)) {
+      slideKeys.push(`${keyMatch[1]}: ${keyMatch[2]}`)
+    } else {
+      deckLines.push(line)
+    }
+  })
+
+  const slides = splitSlides(content || markdown).map((slide, index) =>
+    normalizeSlide(slide, index === 0 ? slideKeys : [])
+  )
+
+  const joined = slides.filter(Boolean).join("\n\n---\n\n")
+  if (!deckLines.length) {
+    return joined.trim()
+  }
+
+  return `---\n${deckLines.join("\n")}\n---\n${joined}`.trim()
 }
 
 export default function Home() {
@@ -336,7 +458,8 @@ export default function Home() {
 
       // Add assistant response
       if (extracted) {
-        setOutput(extracted)
+        const normalized = normalizeSlidevMarkdown(extracted)
+        setOutput(normalized)
       }
 
       const assistantMessage: Message = {
