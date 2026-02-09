@@ -7,8 +7,6 @@ import { Presentation } from "lucide-react"
 export default function LoginPage(props: {
   searchParams: Promise<{ callbackUrl?: string }>
 }) {
-  // In Next.js 15, searchParams is a Promise
-  // We'll use Suspense boundary in the future, but for now make it async
   return <LoginPageContent searchParams={props.searchParams} />
 }
 
