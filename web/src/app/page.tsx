@@ -143,8 +143,6 @@ function shouldCallAI(text: string) {
   return hasExplicitIntent(text)
 }
 
-type FencedBlock = { lang: string; content: string; fence: string }
-
 function parseKeyValue(line: string) {
   const trimmed = line.trim()
   if (!/^[A-Za-z]/.test(trimmed)) return null
@@ -157,68 +155,50 @@ function normalizeNewlines(value: string) {
   return value.replace(/\r\n/g, "\n").replace(/\r/g, "\n")
 }
 
-function extractFencedBlocks(text: string) {
-  const lines = normalizeNewlines(text).split("\n")
-  const blocks: FencedBlock[] = []
-  let inFence = false
-  let fence = ""
-  let lang = ""
-  let buffer: string[] = []
-
-  for (const raw of lines) {
-    const trimmed = raw.trim()
-    const fenceMatch = trimmed.match(/^(```+|~~~+)(?:\s*(\S+))?\s*$/)
-
-    if (!inFence && fenceMatch) {
-      inFence = true
-      fence = fenceMatch[1]
-      lang = (fenceMatch[2] || "").toLowerCase()
-      buffer = []
-      continue
-    }
-
-    if (inFence && trimmed.startsWith(fence)) {
-      blocks.push({ lang, content: buffer.join("\n"), fence })
-      inFence = false
-      fence = ""
-      lang = ""
-      buffer = []
-      continue
-    }
-
-    if (inFence) {
-      buffer.push(raw)
-    }
-  }
-
-  if (inFence && buffer.length) {
-    blocks.push({ lang, content: buffer.join("\n"), fence })
-  }
-
-  return blocks
-}
-
-function scoreMarkdownBlock(block: FencedBlock) {
+function scoreMarkdownContent(content: string, lang: string) {
   let score = 0
-  if (["markdown", "md", "mdx", "slidev"].includes(block.lang)) score += 3
-  if (/^---$/m.test(block.content)) score += 2
-  if (/^layout:/m.test(block.content)) score += 1
-  if (/^theme:/m.test(block.content)) score += 1
-  if (/#\s+/.test(block.content)) score += 1
-  score += Math.min(block.content.length / 500, 4)
+  if (["markdown", "md", "mdx", "slidev"].includes(lang)) score += 3
+  if (/^---$/m.test(content)) score += 2
+  if (/^layout:/m.test(content)) score += 1
+  if (/^theme:/m.test(content)) score += 1
+  if (/#\s+/.test(content)) score += 1
+  score += Math.min(content.length / 500, 4)
   return score
 }
 
 function extractMarkdownFromResponse(response: string) {
-  const blocks = extractFencedBlocks(response)
-  if (blocks.length) {
-    const sorted = [...blocks].sort((a, b) => scoreMarkdownBlock(b) - scoreMarkdownBlock(a))
-    const content = sorted[0].content.trim()
-    return content.length ? content : null
+  const lines = normalizeNewlines(response).split("\n")
+  const candidates: { content: string; lang: string; score: number }[] = []
+
+  for (let i = 0; i < lines.length; i++) {
+    const startMatch = lines[i].trim().match(/^(```+|~~~+)\s*(\S+)?\s*$/)
+    if (!startMatch) continue
+    const fence = startMatch[1]
+    const lang = (startMatch[2] || "").toLowerCase()
+
+    // prefer markdown-ish fences; still allow others as fallback
+    let endIndex = -1
+    for (let j = lines.length - 1; j > i; j--) {
+      if (lines[j].trim() === fence) {
+        endIndex = j
+        break
+      }
+    }
+
+    const content = lines.slice(i + 1, endIndex === -1 ? lines.length : endIndex).join("\n").trim()
+    if (!content) continue
+    candidates.push({
+      content,
+      lang,
+      score: scoreMarkdownContent(content, lang),
+    })
   }
 
-  const raw = normalizeNewlines(response)
-  const lines = raw.split("\n")
+  if (candidates.length) {
+    const sorted = [...candidates].sort((a, b) => b.score - a.score)
+    return sorted[0].content || null
+  }
+
   const startIndex = lines.findIndex((line) => {
     const trimmed = line.trim()
     if (!trimmed) return false
