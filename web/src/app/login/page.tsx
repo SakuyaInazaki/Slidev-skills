@@ -1,13 +1,14 @@
 import { LoginClient } from "./login-client"
 
 type LoginPageProps = {
-  searchParams?: {
+  searchParams?: Promise<{
     callbackUrl?: string | string[]
-  }
+  }>
 }
 
-export default function LoginPage({ searchParams }: LoginPageProps) {
-  const rawCallbackUrl = searchParams?.callbackUrl
+export default async function LoginPage({ searchParams }: LoginPageProps) {
+  const params = searchParams ? await searchParams : undefined
+  const rawCallbackUrl = params?.callbackUrl
   const callbackUrl =
     typeof rawCallbackUrl === "string" && rawCallbackUrl.length > 0 ? rawCallbackUrl : "/"
 
