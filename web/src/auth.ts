@@ -20,11 +20,16 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       }
       return session
     },
+    async redirect({ url, baseUrl }) {
+      return baseUrl || url
+    },
   },
   pages: {
     signIn: "/login",
+    error: "/login",
   },
   session: {
     strategy: "database",
   },
+  debug: process.env.NODE_ENV === "development",
 })
