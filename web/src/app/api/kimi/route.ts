@@ -71,7 +71,12 @@ const SYSTEM_PROMPT = `你是一位“演示导演 + 视觉叙事设计师”，
 ## Slidev 语法要点
 - Frontmatter 位于 \`---\` 之间
 - 分页用 \`---\`
-- layout 示例：\`layout: two-cols\`
+- layout 必须写在 slide 的 frontmatter 中（不要用“## cover”代替）
+- 示例：
+  ---
+  layout: cover
+  class: text-center
+  ---
 - 两栏布局用 \`::right::\`
 - 点击动画：\`<div v-click>\` 或 \`<v-clicks>\`
 - 始终保持语法有效
@@ -92,6 +97,54 @@ const SYSTEM_PROMPT = `你是一位“演示导演 + 视觉叙事设计师”，
 3. 为什么这样更好（简洁理由）
 
 如果信息不足，先提最多 3 个问题再继续。`
+
+function extractMarkdownBlock(text: string) {
+  const match = text.match(/```(?:markdown|md)?\s*([\s\S]*?)```/i)
+  if (!match) return null
+  const content = match[1].trim()
+  return content.length > 0 ? content : null
+}
+
+const LAYOUT_TOKENS = [
+  "cover",
+  "center",
+  "default",
+  "intro",
+  "section",
+  "two-cols",
+  "image-right",
+  "image-left",
+  "image",
+  "statement",
+  "quote",
+  "iframe",
+]
+
+function hasInvalidLayoutUsage(markdown: string) {
+  let inFrontmatter = false
+  const lines = markdown.split("\n")
+
+  for (const raw of lines) {
+    const line = raw.trim()
+    if (line === "---") {
+      inFrontmatter = !inFrontmatter
+      continue
+    }
+
+    if (!inFrontmatter && /^layout:\s*/i.test(line)) {
+      return true
+    }
+
+    if (/^##\s+/i.test(line)) {
+      const token = line.replace(/^##\s+/i, "").trim().toLowerCase()
+      if (LAYOUT_TOKENS.includes(token)) {
+        return true
+      }
+    }
+  }
+
+  return false
+}
 
 async function callKimiAPI(messages: KimiMessage[], apiKey: string, model: string = "moonshot-v1-8k") {
   const response = await fetch("https://api.moonshot.cn/v1/chat/completions", {
@@ -210,13 +263,24 @@ export async function POST(req: NextRequest) {
     }
 
     const result = await callKimiAPI(enhancedMessages, apiKey, model)
+    let responseText = result.text
+    let totalTokens = result.usage.total_tokens
+
+    const extracted = extractMarkdownBlock(responseText)
+    if (extracted && hasInvalidLayoutUsage(extracted)) {
+      const repairPrompt = `请将以下内容修正为**合法 Slidev Markdown**，严格遵守：\n- 只能使用 Slidev 语法\n- layout 必须写在每页的 frontmatter 内\n- 不要使用“## cover/section”等标题表示 layout\n- 分页使用 ---\n- 保留原意与结构\n\n内容如下：\n${extracted}`
+      const repair = await callKimiAPI([
+        { role: "user", content: repairPrompt },
+      ], apiKey, model)
+      responseText = repair.text
+      totalTokens += repair.usage.total_tokens
+    }
 
     // 记录使用量（使用的总 token 数）
-    const totalTokens = result.usage.total_tokens
     await recordUsage(userId, "chat", totalTokens)
 
     return NextResponse.json({
-      response: result.text,
+      response: responseText,
       usage: {
         inputTokens: result.usage.prompt_tokens,
         outputTokens: result.usage.completion_tokens,
