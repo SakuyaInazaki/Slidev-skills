@@ -513,6 +513,108 @@ function normalizeSlidevMarkdown(markdown: string) {
   return `---\n${deckLines.join("\n")}\n---\n${joined}`.trim()
 }
 
+function getLayoutFromFrontmatter(lines: string[]) {
+  for (const line of lines) {
+    const kv = parseKeyValue(line)
+    if (!kv) continue
+    if (kv.key.toLowerCase() === "layout") {
+      return kv.value.trim().toLowerCase()
+    }
+  }
+  return null
+}
+
+function validateSlidevMarkdown(markdown: string) {
+  const errors: string[] = []
+  const trimmed = markdown.trim()
+  if (!trimmed) {
+    return { ok: false, errors: ["输出为空，无法应用。"] }
+  }
+
+  const { frontmatterLines, bodyLines } = extractDeckFrontmatter(markdown)
+  const deckHasSlideKeys = frontmatterLines.some((line) => {
+    const kv = parseKeyValue(line)
+    return kv ? SLIDEV_SLIDE_KEY_SET.has(kv.key.toLowerCase()) : false
+  })
+  if (deckHasSlideKeys) {
+    errors.push("顶层 frontmatter 中包含 slide 级别字段（layout/class/background/transition）。")
+  }
+
+  const slides = parseSlides(bodyLines)
+  if (!slides.length) {
+    errors.push("没有检测到任何 slide 内容。")
+  }
+
+  slides.forEach((slide, index) => {
+    const layout = getLayoutFromFrontmatter(slide.frontmatter)
+    let inCode = false
+    let fence = ""
+    let sawNonEmpty = false
+    let layoutHeadingAtTop = false
+    let layoutHeadingToken: string | null = null
+    let sawColumns = false
+    let sawSlideKeyInBody = false
+
+    slide.content.forEach((raw) => {
+      const trimmedLine = raw.trim()
+      const fenceMatch = trimmedLine.match(/^(```+|~~~+)/)
+      if (fenceMatch) {
+        if (!inCode) {
+          inCode = true
+          fence = fenceMatch[1]
+        } else if (trimmedLine.startsWith(fence)) {
+          inCode = false
+          fence = ""
+        }
+        return
+      }
+
+      if (inCode) return
+      if (!trimmedLine) return
+
+      if (!sawNonEmpty) {
+        const headingMatch = trimmedLine.match(/^#{1,3}\s+(.+)$/)
+        if (headingMatch) {
+          const token = headingMatch[1].trim().toLowerCase()
+          if (SLIDEV_LAYOUTS.includes(token)) {
+            layoutHeadingAtTop = true
+            layoutHeadingToken = token
+          }
+        }
+      }
+
+      const kv = parseKeyValue(trimmedLine)
+      if (kv && SLIDEV_SLIDE_KEY_SET.has(kv.key.toLowerCase())) {
+        sawSlideKeyInBody = true
+      }
+
+      if (trimmedLine === "::right::" || trimmedLine === "::left::" || trimmedLine === "::cols::") {
+        sawColumns = true
+      }
+
+      sawNonEmpty = true
+    })
+
+    if (inCode) {
+      errors.push(`第 ${index + 1} 页代码块未闭合。`)
+    }
+
+    if (layoutHeadingAtTop && !layout) {
+      errors.push(`第 ${index + 1} 页用标题“## ${layoutHeadingToken ?? "layout"}”代替 layout，但未写入 frontmatter。`)
+    }
+
+    if (sawSlideKeyInBody) {
+      errors.push(`第 ${index + 1} 页包含位于正文中的 slide 字段（layout/class/background/transition）。`)
+    }
+
+    if (sawColumns && layout !== "two-cols") {
+      errors.push(`第 ${index + 1} 页使用了分栏语法，但未设置 layout: two-cols。`)
+    }
+  })
+
+  return { ok: errors.length === 0, errors }
+}
+
 export default function Home() {
   const { data: session, status } = useSession()
   const [input, setInput] = useState(SAMPLE_MARKDOWN)
@@ -738,11 +840,18 @@ export default function Home() {
       const data = await response.json()
       const extracted = extractMarkdownFromResponse(data.response)
       const previousOutput = output
+      let applied = false
+      let validationErrors: string[] = []
 
-      // Add assistant response
       if (extracted) {
         const normalized = normalizeSlidevMarkdown(extracted)
-        setOutput(normalized)
+        const validation = validateSlidevMarkdown(normalized)
+        if (validation.ok) {
+          setOutput(normalized)
+          applied = true
+        } else {
+          validationErrors = validation.errors
+        }
       }
 
       const assistantMessage: Message = {
@@ -750,7 +859,7 @@ export default function Home() {
         role: "assistant",
         content: data.response,
         timestamp: new Date(),
-        actions: extracted
+        actions: applied
           ? [{
               label: "Undo Apply",
               action: () => setOutput(previousOutput),
@@ -758,7 +867,18 @@ export default function Home() {
             }]
           : undefined,
       }
-      setMessages(prev => [...prev, assistantMessage])
+      setMessages(prev => {
+        const next = [...prev, assistantMessage]
+        if (validationErrors.length) {
+          next.push({
+            id: (Date.now() + 2).toString(),
+            role: "assistant",
+            content: `格式校验失败，未应用到输出：\n${validationErrors.map((err) => `- ${err}`).join("\n")}\n\n请让 AI 重新输出**合法 Slidev Markdown**，或补充你的具体要求。`,
+            timestamp: new Date(),
+          })
+        }
+        return next
+      })
 
     } catch (error) {
       setMessages(prev => [...prev, {
